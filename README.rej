@@ -1,0 +1,11 @@
+diff a/README b/README	(rejected hunks)
+@@ -45,7 +45,8 @@ request.c  - parser del segundo mensaje del protocolo SOCKSv5. Implementado de
+              forma más tradicional (completa una estructura).
+ netutils.c - utilidades varias relacionadas a sockets
+ selector.c - selector.c - un muliplexor de entrada salida.
+-
++stm.c      - pequeño motor de maquina de estados donde los eventos son los
++             del selector.c
+ 
+ Los parsers no realizan llamadas de sistema ni alocaciones.
+ 
