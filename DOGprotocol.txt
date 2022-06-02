@@ -1,0 +1,70 @@
+                        SOCKS Authentication Protocol 
+
+Status of this Memo
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  
+
+
+Acknowledgments
+
+   This memo describes a protocol that is designed to interact with a Socks5d
+   server and obtain metrics from it. It is a session oriented protocol which works 
+   over SCTP. 
+
+1.  Introduction
+
+   This protocol is intended to provide tools for a client in order to obtain certain 
+   information over a running Socks5d server. The client can make requests asking for 
+   the historic amount of connections over the server, the quantity of concurrent connections
+   in the server and the quantity of bytes transfered in the server. This protocol does not 
+   assure that the metrics are non volatile, meaning that if the server reboots, the statistics 
+   may be lost. 
+   As this protocol is a session oriented protocol, operations such as adding or deleting user and
+   setting a password, are needed.
+
+2.  Initial negotiation
+    
+   The client establishes a SCTP connection with the server.
+   
+   Once the connection with the SOCKS V5 server has started, the client
+   must send the log in data by producing an Username/Password request:
+
+           +----+------+----------+------+----------+
+           |VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+           +----+------+----------+------+----------+
+           | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
+           +----+------+----------+------+----------+
+           
+   The VER field contains the current version of the subnegotiation,
+   which is X'01'.
+   The ULEN field contains the length of the UNAME field that follows.
+   The UNAME field contains the username as known to the source operating system.
+   The PLEN field contains the length of the PASSWD field that follows.
+   The PASSWD field contains the password association with the given UNAME.
+
+   The server verifies the supplied UNAME and PASSWD, and sends the
+   following response:
+   
+                        +----+--------+
+                        |VER | STATUS |
+                        +----+--------+
+                        | 1  |   1    |
+                        +----+--------+
+
+   A STATUS field of X'00' indicates connection succedeed.
+   A STATUS field of X'01' indicates connection failed by incorrect user/password
+   A STATUS field of X'02' indicates an invalid version
+   A STATUS field of X'03' indicates a server error
+  
+   In case of failure, the server returns a `failure' (any STATUS value different than X'00')
+   status, it MUST close the connection.
+   
+   In case of succesfull connection (STATUS value X'00'), the session is established.
+
+3.  Requests 
+
+   Once the client is authenticated (and in consequence, the session with the server is established),
+   the client sends the request details. 
+
