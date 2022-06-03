@@ -21,8 +21,8 @@ Acknowledgments
    in the server and the quantity of bytes transfered in the server. This protocol does not 
    assure that the metrics are non volatile, meaning that if the server reboots, the statistics 
    may be lost. 
-   As this protocol is a session oriented protocol, operations such as adding or deleting user and
-   setting a password, are needed.
+   As this protocol is  session oriented, operations such as adding or deleting user,
+   setting a password and ending a connection, are needed.
 
 2.  Initial negotiation
     
@@ -38,7 +38,7 @@ Acknowledgments
            +----+------+----------+------+----------+
            
    The VER field contains the current version of the subnegotiation,
-   which is X'01'.
+   which is 0x01.
    The ULEN field contains the length of the UNAME field that follows.
    The UNAME field contains the username as known to the source operating system.
    The PLEN field contains the length of the PASSWD field that follows.
@@ -53,18 +53,96 @@ Acknowledgments
                         | 1  |   1    |
                         +----+--------+
 
-   A STATUS field of X'00' indicates connection succedeed.
-   A STATUS field of X'01' indicates connection failed by incorrect user/password
-   A STATUS field of X'02' indicates an invalid version
-   A STATUS field of X'03' indicates a server error
+   A STATUS field of 0x00 indicates connection succedeed.
+   A STATUS field of 0x01 indicates connection failed by incorrect user/password
+   A STATUS field of 0x02 indicates an invalid version
+   A STATUS field of 0x03 indicates a server error
   
    In case of failure, the server returns a `failure' (any STATUS value different than X'00')
    status, it MUST close the connection.
    
    In case of succesfull connection (STATUS value X'00'), the session is established.
 
-3.  Requests 
+3.  General request structure
 
-   Once the client is authenticated (and in consequence, the session with the server is established),
-   the client sends the request details. 
+   Once the client is authenticated (and in consequence, the session with the server is established).
+   All client request MUST contain the following structure: 
+   
+                     +------+-----+
+                     | TYPE | CMD |
+                     +------+-----+
+                     |   1  |  1  |
+                     +------+-----+
+   
+   Where TYPE refers to the command type, which can be:
+      0x00 for a Query request
+      0x01 for a Modification request
+      0x02 for Ending connection
+   
+   and CMD refers to the specific command for each TYPE.
 
+   The associated CMD values for Query requests are the following:
+      o  0x00 to get the list of users
+      o  0x01 to get the historic amount of connections over the server
+      o  0x02 to get the concurrent connections quantity 
+      o  0x03 to get the quantity of bytes transfered in the server.
+   
+   The associated CMD values for Modification request are the following:
+      o  0x00 to Add a user 
+      o  0x01 to Delete a user 
+      o  0x02 to set a new password 
+      o  0x03 to set a user admin priviledges
+      
+   In case of Ending a connection no CMD value is needed.
+
+4.  General response structure
+   
+   As well as in the general request structure, every server response will contain the 
+   a general structure as it follows:
+
+                     +--------+-----+
+                     | STATUS | CMD |
+                     +--------+-----+
+                     |   1    |  1  |
+                     +--------+-----+
+  In which CMD refers to the command requested and STATUS refers to the request status,
+  and its values can be:
+      o 0x00 succedeed
+      o 0x01 general server failure
+      o 0x02 unsupported type
+      o 0x03 unsupported command
+
+5.  Query Commands
+
+   5.1   Query Requests  
+      
+      As specified before, all requests have the same general structure, but specific request
+      structures may requier different parameters according to their needs. In particular,
+      query request do not require any other parameters.
+      
+                     +------+-----+
+                     | TYPE | CMD |
+                     +------+-----+
+                     |   1  |  1  |
+                     +------+-----+
+   
+      As reminder, the value of TYPE field for query requests is 0x0 and the CMD value varies
+      according which command is needed.
+
+      5.1.1   List of users  
+         
+         CMD value 0x00. Command used to get a list of all users in the server.
+
+
+      5.1.2   List of users  
+         
+         CMD value 0x01. Command used quantity of current connections.
+
+      5.1.3   List of users  
+         
+         CMD value 0x02. Command used to get the quantity of bytes transfered in the server.
+
+   5.2   Query Responses
+      
+
+   
