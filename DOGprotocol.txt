@@ -39,10 +39,10 @@ Acknowledgments
            
    The VER field contains the current version of the subnegotiation,
    which is 0x01.
-   The ULEN field contains the length of the UNAME field that follows.
-   The UNAME field contains the username as known to the source operating system.
-   The PLEN field contains the length of the PASSWD field that follows.
-   The PASSWD field contains the password association with the given UNAME.
+      o The ULEN field contains the length of the UNAME field that follows.
+      o The UNAME field contains the username as known to the source operating system.
+      o The PLEN field contains the length of the PASSWD field that follows.
+      o The PASSWD field contains the password association with the given UNAME.
 
    The server verifies the supplied UNAME and PASSWD, and sends the
    following response:
@@ -53,10 +53,10 @@ Acknowledgments
                         | 1  |   1    |
                         +----+--------+
 
-   A STATUS field of 0x00 indicates connection succedeed.
-   A STATUS field of 0x01 indicates connection failed by incorrect user/password
-   A STATUS field of 0x02 indicates an invalid version
-   A STATUS field of 0x03 indicates a server error
+   o A STATUS field of 0x00 indicates connection succedeed.
+   o A STATUS field of 0x01 indicates connection failed by incorrect user/password
+   o A STATUS field of 0x02 indicates an invalid version
+   o A STATUS field of 0x03 indicates a server error
   
    In case of failure, the server returns a `failure' (any STATUS value different than X'00')
    status, it MUST close the connection.
@@ -100,13 +100,15 @@ Acknowledgments
    As well as in the general request structure, every server response will contain the 
    a general structure as it follows:
 
-                     +--------+-----+
-                     | STATUS | CMD |
-                     +--------+-----+
-                     |   1    |  1  |
-                     +--------+-----+
-  In which CMD refers to the command requested and STATUS refers to the request status,
+                     +--------+-------+----------+
+                     |  TYPE  |  CMD  |  STATUS  |
+                     +--------+-------+----------+
+                     |   1    |  1    |    1     |
+                     +--------+-------+----------+
+
+  In which CMD refers to the command requested, TYPE refers to the type requested and STATUS refers to the request status,
   and its values can be:
+
       o 0x00 succedeed
       o 0x01 general server failure
       o 0x02 unsupported type
@@ -148,13 +150,15 @@ Acknowledgments
          
          The list of users command returns content within the following structure:
 
-                  +-------+-----+-------+-------------+--------------+
-                  |  TYPE | CMD |  QTY  |     USRS    |   USRS.LEN   |
-                  +-------+-----+-------+-------------+--------------+
-                  |   1   |  1  |   1   |  Variable   |   Variable   |
-                  +-------+-----+-------+-------------+--------------+
+                  +-------+-----+----------+-------+-------------+--------------+
+                  |  TYPE | CMD |  STATUS  |  QTY  |     USRS    |   USRS.LEN   |
+                  +-------+-----+----------+-------+-------------+--------------+
+                  |   1   |  1  |    1     |   1   |  Variable   |   Variable   |
+                  +-------+-----+----------+-------+-------------+--------------+
 
-         o  Where TYPE and CMD are the values previously specified.
+         Where:
+
+         o  TYPE and CMD and STATUS are the values previously specified.
          o  QTY is a 1 byte long unsigned integer related to the amount of users listed.
          o  USRS refers to the user list itself in ASCII charset.
          o  USRS.LEN refers to the user list itself in ASCII charset.
@@ -164,13 +168,14 @@ Acknowledgments
    
          The quantity of current connections command returns content within the following structure:
 
-                  +-------+-----+-------+
-                  |  TYPE | CMD |  QTY  |
-                  +-------+-----+-------+
-                  |   1   |  1  |   8   |
-                  +-------+-----+-------+
+                  +-------+-----+----------+-------+
+                  |  TYPE | CMD |  STATUS  |  QTY  |
+                  +-------+-----+----------+-------+
+                  |   1   |  1  |    1     |   8   |
+                  +-------+-----+----------+-------+
+         Where:
 
-         o  Where TYPE and CMD are the values previously specified.
+         o  TYPE and CMD and STATUS are the values previously specified.
          o  QTY is a 8 byte long unsigned integer related to the amount of users listed.
 
 
@@ -178,13 +183,125 @@ Acknowledgments
    
          The quantity of bytes transfered command returns content within the following structure:
 
-                  +-------+-----+-------+
-                  |  TYPE | CMD |  QTY  |
-                  +-------+-----+-------+
-                  |   1   |  1  |   8   |
-                  +-------+-----+-------+
-                  
-         o  Where TYPE and CMD are the values previously specified.
+                  +-------+-----+----------+-------+
+                  |  TYPE | CMD |  STATUS  |  QTY  |
+                  +-------+-----+----------+-------+
+                  |   1   |  1  |    1     |   8   |
+                  +-------+-----+----------+-------+
+
+         Where:
+
+         o  TYPE and CMD and STATUS are the values previously specified.
          o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.
 
+      5.2.4   Historic amount of connections over the server
+   
+         The historic amount of connections over the server command returns content within the following structure:
+
+                  +-------+-----+----------+-------+
+                  |  TYPE | CMD |  STATUS  |  QTY  |
+                  +-------+-----+----------+-------+
+                  |   1   |  1  |    1     |   8   |
+                  +-------+-----+----------+-------+
          
+         Where: 
+
+         o  TYPE, CMD and STATUS are the values previously specified.
+         o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.
+
+6.  Modification Commands
+
+   6.1   Modification Requests  
+
+      6.1.1  Add a User
+
+            To add a user, the following  structure is required:
+
+           +------+----------+------+----------+----------+
+           | ULEN |  UNAME   | PLEN |  PASSWD  |   ADMIN  |
+           +------+----------+------+----------+----------+
+           |  1   | 1 to 255 |  1   | 1 to 255 |    1     |
+           +------+----------+------+----------+----------+
+      
+      Where:
+      
+         o  ULEN is a 1 byte long unsigned integer refering to the lenght of the UNAME field
+         o  UNAME contains the username (must be in ASCII charset).
+         o  PLEN field contains a 1 byte long unsigned integer refering to the length of the PASSWD.
+         o  PASSWD field contains the password association with the given UNAME (must be in ASCII charset).
+         o  ADMIN field contains a 1 byte long unsigned integer refering  to the role of the new user.
+
+            0x00 for normal users
+            0x01 for admin users
+
+      6.1.2  Delete User
+
+            To delete a user, the following  structure is required:
+
+           +------+----------+------+----------+----------+
+           | ULEN |  UNAME   | PLEN |  PASSWD  |   ADMIN  |
+           +------+----------+------+----------+----------+
+           |  1   | 1 to 255 |  1   | 1 to 255 |    1     |
+           +------+----------+------+----------+----------+
+
+         In which ULEN, UNAME,PLEN, PASSWD and ADMIN are the same fields specified in 6.1.1. 
+         It is important to specify that the UNAME value must exist in order to be deleted.
+            o In case ADMIN field is 0x00, it means that the user making the request doesn't have 
+              admin priviledges, in consecuence, the password must match with the actual password of 
+              the UNAME user
+
+            o In case ADMIN field is 0x01, it means that the user making the request do have 
+              admin priviledges, in consecuence, the password field will not be evaluated.
+
+
+
+      6.1.3  Set new Password
+
+            To set a  new password for a user, the following  structure is required:
+
+           +------+----------+------+----------+------------+------------------+----------+
+           | ULEN |  UNAME   | PLEN |  PASSWD  | PLEN.NEW   |     PASSWD.NEW   |   ADMIN  |
+           +------+----------+------+----------+------------+------------------+----------+
+           |  1   | 1 to 255 |  1   | 1 to 255 |     1      |      1 to 255    |    1     |
+           +------+----------+------+----------+------------+------------------+----------+
+
+         In which ULEN, UNAME, PLEN, PASSWD and ADMIN are the same fields specified in 6.1.1. 
+         PLEN.NEW and PASSWD.NEW are the same  type as PLEN and PASSWD and contains the new password 
+         specifications.
+         It is important to specify that the UNAME value must exist in order to be deleted.
+
+            o In case ADMIN field is 0x00, it means that the user making the request doesn't have 
+              admin priviledges, in consecuence, the password must match with the actual password of 
+              the UNAME user
+
+            o In case ADMIN field is 0x01, it means that the user making the request do have 
+              admin priviledges, in consecuence, the password field will not be evaluated.
+
+      6.1.3  Give a user admin priviledges
+
+            To set a  new password for a user, the following  structure is required:
+
+                  +------+----------+------+----------+
+                  | ULEN |  UNAME   | PLEN |  PASSWD  |
+                  +------+----------+------+----------+
+                  |  1   | 1 to 255 |  1   | 1 to 255 |
+                  +------+----------+------+----------+
+
+           In which the fields are the same specified in 6.1.1 and in 2.
+
+   6.2   Modification Responses  
+
+         All modification requests have the following response structure:
+
+                  +-------+-----+----------+
+                  |  TYPE | CMD |  STATUS  |
+                  +-------+-----+----------+
+                  |   1   |  1  |    1     |
+                  +-------+-----+----------+
+
+         TYPE, CMD values must match the request message sent and STATUS can be:
+         
+            o 0x00 succedeed
+            o 0x01 general server failure
+            o 0x02 unsupported type
+            o 0x03 unsupported command
