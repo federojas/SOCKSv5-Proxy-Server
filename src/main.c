@@ -16,18 +16,20 @@
 #include <limits.h>
 #include <errno.h>
 #include <signal.h>
-
 #include <unistd.h>
 #include <sys/types.h>   // socket
 #include <sys/socket.h>  // socket
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
-#include "socks5.h"
 #include "selector.h"
-#include "socks5nio.h"
+#include "logger.h"
 
+#define PORT 1080
+#define DEST_PORT 8888
+#define MAX_PENDING_CONN 20
+#define MAX_ADDR_BUFFER 128
 static bool done = false;
+static char addrBuffer[MAX_ADDR_BUFFER];
 
 static void
 sigterm_handler(const int signal) {
@@ -35,9 +37,103 @@ sigterm_handler(const int signal) {
     done = true;
 }
 
+struct buffer {
+	char * buffer;
+	size_t len;     // longitud del buffer
+	size_t from;    // desde donde falta escribir
+};
+
+// TODO: este handler no se si esta bien
+void readHandler(struct selector_key *key){
+    char buffer[1024]; // Buffer for echo string
+	// Receive message from client
+	ssize_t numBytesRcvd = recv(key->fd, buffer, 1024, 0);
+	if (numBytesRcvd < 0) {
+		log(ERROR, "recv() failed");
+		return -1;   // TODO definir codigos de error
+	}
+
+    // TODO: Me falta registrarlo para escritura una vez que ya lei todo?
+}
+
+
+void writeHandler(struct selector_key * key){
+    struct buffer * buffer = (struct buffer * )key->data;
+    size_t bytesToSend = buffer->len - buffer->from;
+	if (bytesToSend > 0) {  // Puede estar listo para enviar, pero no tenemos nada para enviar
+		log(INFO, "Trying to send %zu bytes to socket %d\n", bytesToSend, socket);
+		size_t bytesSent = send(socket, buffer->buffer + buffer->from,bytesToSend,  MSG_DONTWAIT); 
+		log(INFO, "Sent %zu bytes\n", bytesSent);
+
+		if ( bytesSent < 0) {
+			// Esto no deberia pasar ya que el socket estaba listo para escritura
+			// TODO: manejar el error
+			log(FATAL, "Error sending to socket %d", socket);
+		} else {
+			size_t bytesLeft = bytesSent - bytesToSend;
+
+			// Si se pudieron mandar todos los bytes limpiamos el buffer y sacamos el fd para el select
+			if ( bytesLeft == 0) {
+				clear(buffer);
+				// TOODO : ME FALTA SACAR EL FD DEL SELECTOR
+			} else {
+				buffer->from += bytesSent;
+			}
+		}
+	}
+}
+
+// Estos serian los handlers de los sockets activos que abri con 
+// el destino
+static fd_handler activeSocketHandler = {
+    .handle_read = &readHandler,
+    .handle_write = &writeHandler,
+    .handle_block = NULL,
+    .handle_close = NULL
+};
+
+void socksv5_passive_accept(struct selector_key *key){
+
+    struct sockaddr_storage clntAddr; // Client address
+	// Set length of client address structure (in-out parameter)
+	socklen_t clntAddrLen = sizeof(clntAddr);
+
+	// Wait for a client to connect 
+    // TODO: aca me puedo bloquear?
+	int clntSock = accept(key->fd, (struct sockaddr *) &clntAddr, &clntAddrLen);
+	if (clntSock < 0) {
+		log(ERROR, "accept() failed");
+		return -1;
+	}
+
+	// clntSock is connected to a client!
+	printSocketAddress((struct sockaddr *) &clntAddr, addrBuffer);
+	log(INFO, "Handling client %s", addrBuffer);
+
+
+    // lo registro en el selector para esperar que me escriba algo
+    selector_register(key->s, clntSock, &activeSocketHandler, OP_READ, key->data);
+
+
+    // Como soy un tcp transparente, debo abrir un socket activo con el destino final
+    // y pasarle todo
+    // aca estoy hardcodeando una direccion cualquiera cuando en realidad
+    // deberia registrar una tarea bloqueante (getaddrinfo) que me 
+    // averigue la addrinfo del destino
+    int destSocketFd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in serSockAddr = {.sin_family = AF_INET,
+        .sin_addr.s_addr = inet_addr("127.0.0.1"),
+        .sin_port = htons(DEST_PORT)};
+
+    //TODO: el connect es bloqueante, para solucionar esto tendria que 
+    // registrarlo como escritura
+    connect(destSocketFd, (struct sockaddr *) &serSockAddr, sizeof(serSockAddr));
+    selector_register(key->s, destSocketFd, &activeFdHandler, OP_WRITE, key->data);
+}
+
 int
 main(const int argc, const char **argv) {
-    unsigned port = 1080;
+    unsigned port = PORT;
 
     if(argc == 1) {
         // utilizamos el default
@@ -86,7 +182,7 @@ main(const int argc, const char **argv) {
         goto finally;
     }
 
-    if (listen(server, 20) < 0) {
+    if (listen(server, MAX_PENDING_CONN) < 0) {
         err_msg = "unable to listen";
         goto finally;
     }
@@ -117,12 +213,15 @@ main(const int argc, const char **argv) {
         err_msg = "unable to create selector";
         goto finally;
     }
-    const struct fd_handler socksv5 = {
+
+    // probablemente aca me falta guardar la tarea bloqueante 
+    // del getaddrinfo
+    const struct fd_handler tcpTransparentProxy = {
         .handle_read       = socksv5_passive_accept,
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server, &socksv5,
+    ss = selector_register(selector, server, &tcpTransparentProxy,
                                               OP_READ, NULL);
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";

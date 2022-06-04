@@ -21,7 +21,7 @@
 #define MAX_SOCKETS 30
 #define BUFFSIZE 1024
 #define MAX_PENDING_CONNECTIONS   3    // un valor bajo, para realizar pruebas
-#define DESTINATION_PORT "25"
+#define DESTINATION_PORT "8888"
 #define DEST "localhost"
 
 struct buffer {
