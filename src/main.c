@@ -128,7 +128,8 @@ void socksv5_passive_accept(struct selector_key *key){
     //TODO: el connect es bloqueante, para solucionar esto tendria que 
     // registrarlo como escritura
     connect(destSocketFd, (struct sockaddr *) &serSockAddr, sizeof(serSockAddr));
-    selector_register(key->s, destSocketFd, &activeFdHandler, OP_WRITE, key->data);
+    // esta linea va?
+   // selector_register(key->s, destSocketFd, &activeSocketHandler, OP_WRITE, key->data);
 }
 
 int
