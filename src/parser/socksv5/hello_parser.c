@@ -2,7 +2,7 @@
 #include "logger.h"
 
 void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data) {
-    p->current_state = VERSION;
+    p->current_state = HELLO_VERSION;
     p->on_auth_method = on_auth_method;
     p->data = data;
     p->methods_remaining = 0;
@@ -12,29 +12,29 @@ enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte) {
 
     switch(p->current_state) {
 
-        case VERSION:
+        case HELLO_VERSION:
             if(byte == SOCKS5_VERSION)
-                p->current_state = NMETHODS;
+                p->current_state = HELLO_NMETHODS;
             else
-                p->current_state = TRAP;
+                p->current_state = HELLO_TRAP;
         break;
 
-        case NMETHODS:
+        case HELLO_NMETHODS:
             p->methods_remaining = byte;
-            p->current_state = byte > 0 ? METHODS : DONE;
+            p->current_state = byte > 0 ? HELLO_METHODS : HELLO_DONE;
         break;
 
-        case METHODS:
+        case HELLO_METHODS:
            
             if(p->on_auth_method != NULL)
                 p->on_auth_method(p,byte);
             p->methods_remaining--;
             if(p->methods_remaining <= 0)
-                p->current_state = DONE;
+                p->current_state = HELLO_DONE;
         break;
 
-        case DONE:
-        case TRAP:
+        case HELLO_DONE:
+        case HELLO_TRAP:
             // Nothing to do
         break;
 
@@ -65,17 +65,17 @@ bool hello_parser_is_done(enum hello_parser_state state, bool *errored) {
         *errored = false;
 
     switch(state) {
-        case DONE:
+        case HELLO_DONE:
             return true;
         break;
 
-        case VERSION:
-        case NMETHODS:
-        case METHODS:
+        case HELLO_VERSION:
+        case HELLO_NMETHODS:
+        case HELLO_METHODS:
             return false;
         break;
 
-        case TRAP:
+        case HELLO_TRAP:
         default:
             if(errored != NULL)
                 *errored = true;
@@ -84,16 +84,16 @@ bool hello_parser_is_done(enum hello_parser_state state, bool *errored) {
     }
 }
 
-char * hello_parser_error_message(enum hello_parser_state state) {
+char * hello_parser_error_report(enum hello_parser_state state) {
     switch(state) {
-        case DONE:
-        case VERSION:
-        case NMETHODS:
-        case METHODS:
+        case HELLO_DONE:
+        case HELLO_VERSION:
+        case HELLO_NMETHODS:
+        case HELLO_METHODS:
             return "Hello-parser: no error";
         break;
 
-        case TRAP:
+        case HELLO_TRAP:
         default:
             return "Hello-parser: on trap state";
         break;

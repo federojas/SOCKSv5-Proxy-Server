@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "buffer.h"
-
 static const uint8_t METHOD_NO_AUTH_REQ = 0x00;
 static const uint8_t METHOD_NO_ACCEPTABLE_METHODS = 0xFF;
 static const uint8_t SOCKS5_VERSION = 0x05;
@@ -17,11 +16,11 @@ static const uint8_t SOCKS5_VERSION = 0x05;
 *   Definimos enums para los estados para seguir mas facil en debug
 */
 enum hello_parser_state {
-    VERSION,
-    NMETHODS,
-    METHODS,
-    DONE,
-    TRAP,
+    HELLO_VERSION,
+    HELLO_NMETHODS,
+    HELLO_METHODS,
+    HELLO_DONE,
+    HELLO_TRAP,
 };
 
 typedef struct hello_parser {
@@ -47,6 +46,6 @@ bool hello_parser_consume(buffer *b, hello_parser *p, bool *errored);
 
 bool hello_parser_is_done(enum hello_parser_state state, bool *errored);
 
-char *hello_parser_error_message(enum hello_parser_state state);
+char *hello_parser_error_report(enum hello_parser_state state);
 
 #endif
