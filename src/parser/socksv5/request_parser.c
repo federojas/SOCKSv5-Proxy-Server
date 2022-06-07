@@ -4,15 +4,13 @@
 
 
 // TODO: mejorar estilo del codigo
-
-////////////////////////////////// STATIC FUNCTIONS ////////////////////////////////
 static void remaining_set(request_parser *p, const int remainingBytes) {
-    p->i = 0;
+    p->readBytes = 0;
     p->totalBytes = remainingBytes;
 }
 
 static int remaining_is_done(request_parser *p) {
-    return p->i >= p->totalBytes;
+    return p->readBytes >= p->totalBytes;
 }
 
 static request_state version(request_parser *p, const uint8_t c) {
@@ -22,7 +20,7 @@ static request_state version(request_parser *p, const uint8_t c) {
             next_state = REQUEST_CMD;
             break;
         default:
-            next_state = REQUEST_TRAP;
+            next_state = REQUEST_TRAP_UNSUPPORTED_VERSION;
             break;
     }
     return next_state;
@@ -61,7 +59,7 @@ static request_state atyp(request_parser *p, const uint8_t c) {
             next_state = REQUEST_DSTADDR_FQDN;
             break;
         default:
-            next_state = REQUEST_TRAP;
+            next_state = REQUEST_TRAP_UNSUPPORTED_ATYP;
             break;
     }
     return next_state;
@@ -80,18 +78,18 @@ static request_state dstaddr(request_parser *p, const uint8_t c) {
     switch(p->request->dest_addr_type) {
         case SOCKS5_REQ_ADDRTYPE_IPV4:
             p->request->dest_addr.ipv4.sin_addr.s_addr = (p->request->dest_addr.ipv4.sin_addr.s_addr << 8) + c;
-            p->i++;
+            p->readBytes++;
             // finalice la lectura y pasamos al puerto o seguimos
             if(remaining_is_done(p)) {
                 p->request->dest_addr.ipv4.sin_addr.s_addr = htonl(p->request->dest_addr.ipv4.sin_addr.s_addr);
             }
             break;
         case SOCKS5_REQ_ADDRTYPE_IPV6:
-            ((uint8_t *)&(p->request->dest_addr.ipv6.sin6_addr))[p->i++] = c; 
+            ((uint8_t *)&(p->request->dest_addr.ipv6.sin6_addr))[p->readBytes++] = c; 
             // no necesito una func como htonl porque struct in6_addr se representa como uint8_t u6_addr8[16];
             break;
         case SOCKS5_REQ_ADDRTYPE_DOMAIN:
-            p->request->dest_addr.fqdn[p->i++] = c;
+            p->request->dest_addr.fqdn[p->readBytes++] = c;
             break;
         default:
             // con cualquier otro caso pasamos al trampa
@@ -112,7 +110,7 @@ static request_state dstaddr(request_parser *p, const uint8_t c) {
 
 static request_state dstport(request_parser * p, uint8_t c) {
     request_state next_state = REQUEST_DSTPORT;
-    ((uint8_t *)&(p->request->dest_port))[p->i++] = c; 
+    ((uint8_t *)&(p->request->dest_port))[p->readBytes++] = c; 
     if(remaining_is_done(p)) {
         p->request->dest_port = htons(p->request->dest_port);
         next_state = REQUEST_DONE;
@@ -120,8 +118,9 @@ static request_state dstport(request_parser * p, uint8_t c) {
     return next_state;
 }
 
-
-////////////////////////////////// ///////////////// ////////////////////////////////
+void request_parser_init(request_parser *p) {
+    p->current_state = REQUEST_VERSION;
+}
 
 request_state request_parser_feed(request_parser *p, uint8_t byte) {
     request_state next;
@@ -198,9 +197,9 @@ bool request_parser_is_done(enum request_state state, bool *errored) {
     }
 }
 
-// TODO: Mejorar los errores
+// TODO: Mejorar los errores (EERNO.H clase 31/5 2:52:35)
 
-char * request_parser_error_message(request_state state){
+char * request_parser_error_report(request_state state){
     switch(state) {
 
         case REQUEST_DONE:

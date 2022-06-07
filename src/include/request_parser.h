@@ -14,8 +14,8 @@ static const int PORT_LENGTH = 2;
 // Comandos validos (creo que en realidad solo vamos a usar CONNECT)
 enum socks5_cmd {
     SOCKS5_REQ_CMD_CONNECT = 0x01,
-    SOCKS5_REQ_CMD_BIND = 0x01,
-    SOCKS5_REQ_CMD_ASSOCIATE = 0x01,
+    SOCKS5_REQ_CMD_BIND = 0x02,
+    SOCKS5_REQ_CMD_ASSOCIATE = 0x03,
 };
 
 // Tipos de direcciones validos
@@ -54,6 +54,8 @@ typedef enum request_state {
     
     // TODO: Diferenciar los estados de error para tener una mejor descripcion
     REQUEST_TRAP,
+    REQUEST_TRAP_UNSUPPORTED_VERSION,
+    REQUEST_TRAP_UNSUPPORTED_ATYP,
 } request_state;
 
 enum socks5_response_status {
@@ -69,15 +71,10 @@ enum socks5_response_status {
 };
 
 typedef struct request_parser {
-
     struct socks5_request *request;
-
     enum request_state current_state;
-
     uint8_t totalBytes;
-
-    uint8_t i;
-
+    uint8_t readBytes;
 } request_parser;
 
 void request_parser_init(request_parser *p);
