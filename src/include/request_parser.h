@@ -7,6 +7,10 @@
 #include "buffer.h"
 
 static const uint8_t SOCKS5_VERSION = 0x05;
+static const int IPV4_LENGTH = 4;
+static const int IPV6_LENGTH = 16;
+static const int PORT_LENGTH = 2;
+
 // Comandos validos (creo que en realidad solo vamos a usar CONNECT)
 enum socks5_cmd {
     SOCKS5_REQ_CMD_CONNECT = 0x01,
@@ -72,7 +76,7 @@ typedef struct request_parser {
 
     uint8_t totalBytes;
 
-    uint8_t remainingBytes;
+    uint8_t i;
 
 } request_parser;
 
