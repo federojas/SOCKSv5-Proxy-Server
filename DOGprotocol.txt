@@ -95,8 +95,8 @@ Acknowledgments
       o  0x01 to Delete a user 
       o  0x02 to set a new password 
       o  0x03 to set a user admin priviledges
-      o  0x04 to turn on password spoofing in the server
-      o  0x05 to turn off password spoofing in the server
+      o  0x04 to toggle password spoofing in the server
+    
 
       
    In case of Ending a connection no CMD value is needed.
@@ -154,7 +154,8 @@ Acknowledgments
          CMD value 0x03. Command used to get the quantity of bytes transfered in the server.
       
       //TODO: ES NECESARIO?
-      5.1.5   Current status of the password spoofing
+      5.1.5   Current status of the password spoofing   Current status of the password spoofing
+
          CMD value 0x04. Command used to get the status of the password spoofing over the server.
 
 
@@ -221,6 +222,22 @@ Acknowledgments
 
          o  TYPE and CMD and STATUS are the values previously specified.
          o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.
+      
+      5.2.5   Current status of the password spoofing 
+            
+         The current status of the password spoofing over the server returns content within the following structure:
+
+                  +--------+-------+----------+---------------+
+                  |  TYPE  |  CMD  |  STATUS  |    SPOOFING   |
+                  +--------+-------+----------+---------------+
+                  |   1    |  1    |    1     |       1       |
+                  +--------+-------+----------+---------------+
+
+         o  TYPE and CMD and STATUS are the values previously specified.
+         o  SPOOFING 1 byte long unsigned integer in which: 0x01 for admin users
+            
+            0x00 means that the spoofing is turned on.
+            0x01 means that the spoofing is turned off.
 
 
 6.  Modification Commands
@@ -260,6 +277,7 @@ Acknowledgments
 
          In which ULEN, UNAME,PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
          It is important to specify that the UNAME value must exist in order to be deleted.
+         
             o In case ROLE field is 0x00, it means that the user making the request doesn't have 
               admin priviledges, in consecuence, the password must match with the actual password of 
               the UNAME user
@@ -305,33 +323,19 @@ Acknowledgments
 
            In which the fields are the same specified in 6.1.1 and in 2.
 
-      //TODO: ESTA MAL QUE SEAN DOS FUNCIONES DISTINTAS PARA TOGGLEAR EL PASSWORD SPOOFING? (UNA FUNCION PARA PRENDER Y UNA PARA APAGAR)
-      
-      6.1.4 Turn on password spoofing
+      6.1.4 Toggle password spoofing
 
             In order to toggle password spoofing in the server, the client MUST have admin priviledges.
             This request must contain the following structure:
             
-                  +------+-----+
-                  | TYPE | CMD |
-                  +------+-----+
-                  |   1  |  1  |
-                  +------+-----+
+                  +--------+-------+---------------+
+                  |  TYPE  |  CMD  |   SPOOFING    |
+                  +--------+-------+---------------+
+                  |   1    |  1    |       1       |
+                  +--------+-------+---------------+
 
-            As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x04.
-
-      6.1.5 Turn on password spoofing
-
-            In order to toggle password spoofing in the server, the client MUST have admin priviledges.
-            This request must contain the following structure:
-            
-                  +------+-----+
-                  | TYPE | CMD |
-                  +------+-----+
-                  |   1  |  1  |
-                  +------+-----+
-
-            As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x05.
+            As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x04
+            and SPOOFING is a 1 byte long unsigned 
    
    6.2   Modification Responses  
 
