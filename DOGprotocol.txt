@@ -282,8 +282,8 @@ Acknowledgments
          
          o  TYPE and CMD and STATUS are the values previously specified.
          o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.                             
-         o The ULEN field contains the length of the UNAME field that follows.
-         o The UNAME field contains the username related to the request.    
+         o  The ULEN field contains the length of the UNAME field that follows.
+         o  The UNAME field contains the username related to the request.    
                      
       5.2.7  Access to the logs of the server
       TODO: ESTO NO SE MUY BIEN SI TA BIEN (PROBABLEMENTE NO)
@@ -298,13 +298,7 @@ Acknowledgments
 
          o  TYPE and CMD and STATUS are the values previously specified.
          o  QARGS refers to the amount of parameters to be parsed.
-         o  ARGS are the arguments (the logs).
-
-      
-
-
-               
-                     
+         o  ARGS are the arguments itself (the logs).
 
 
 6.  Modification Commands
@@ -320,7 +314,6 @@ Acknowledgments
             +-------+-----+------+----------+------+----------+----------+
             |   1   |  1  |  1   | 1 to 255 |  1   | 1 to 255 |    1     |
             +-------+-----+------+----------+------+----------+----------+
-      
       
          o  ULEN is a 1 byte long unsigned integer refering to the length of the UNAME field that follows.
          o  UNAME contains the username (must be in ASCII charset).
