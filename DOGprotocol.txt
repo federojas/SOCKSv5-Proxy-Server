@@ -90,7 +90,10 @@ Acknowledgments
       o  0x02 to get the concurrent connections quantity
       o  0x03 to get the quantity of bytes transfered in the server
       o  0x04 to get the status of the password spoofing over the server
+      o  0x05 to get the status of the password spoofing over the server
+      o  0x06 to get access to the logs of the server
 
+Log access 
    
    The associated CMD values for Modification request are the following:
       o  0x00 to Add a user 
@@ -130,8 +133,7 @@ Acknowledgments
    5.1   Query Requests  
       
       As specified before, all requests have the same general structure, but specific request
-      structures may requier different parameters according to their needs. In particular,
-      query request do not require any other parameters.
+      structures may requier different parameters according to their needs.
       
                      +------+-----+
                      | TYPE | CMD |
@@ -161,8 +163,31 @@ Acknowledgments
       //TODO: ES NECESARIO? QUE SNIFEA?
       5.1.5   Current status of the password spoofing  
 
-         CMD value 0x04. Command used to get the status of the password spoofing over the server.
+         CMD value 0x04. Command used to get the status of the password spoofing over POP3 protocol over the server.
 
+      5.1.6   Bytes transfered from a user  TODO: ESTO NO SE SI ES MEDIO UNA FLASHEADA
+
+         CMD value 0x05. Command used to get amount of bytes transfered by a specific user, the request adds to the 
+         base structure the following fields.
+
+                     +------+----------+
+                     | ULEN |  UNAME   |
+                     +------+----------+
+                     |  1   | 1 to 255 |
+                     +------+----------+
+         In which:
+               o The ULEN field contains the length of the UNAME field that follows.
+               o The UNAME field contains the username as known to the source operating system (in ASCII charset).
+         
+         It is relevant to state that only users with admin priviledges are allowed to use this request.
+
+         
+      5.1.7   Access to the logs of the server
+
+         CMD value 0x06. Command used to access the logs over the server.
+         It is relevant to state that only users with admin priviledges are allowed to use this request.
+
+      
 
    5.2   Query Responses
 
@@ -244,6 +269,40 @@ Acknowledgments
             
             0x00 means that the spoofing is turned OFF.
             0x01 means that the spoofing is turned ON.
+
+      5.2.6  Bytes transfered from a user  
+         
+         The amount of bytes transfered by a specific user returns content within the following structure:
+         
+                  +-------+-----+----------+-------+------+----------+
+                  |  TYPE | CMD |  STATUS  |  QTY  | ULEN |  UNAME   |
+                  +-------+-----+----------+-------+------+----------+
+                  |   1   |  1  |    1     |   8   |  1   | 1 to 255 |
+                  +-------+-----+----------+-------+------+----------+
+         
+         o  TYPE and CMD and STATUS are the values previously specified.
+         o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.                             
+         o The ULEN field contains the length of the UNAME field that follows.
+         o The UNAME field contains the username related to the request.    
+                     
+      5.2.7  Access to the logs of the server
+      TODO: ESTO NO SE MUY BIEN SI TA BIEN (PROBABLEMENTE NO)
+ 
+         Te logs from the user request returns content within the following structure:
+
+                  +--------+-------+----------+-------------+-------------+
+                  |  TYPE  |  CMD  |  STATUS  |    QARGS    |     ARGS    |
+                  +--------+-------+----------+-------------+-------------+
+                  |   1    |  1    |    1     |      1      |   Variable  |
+                  +--------+-------+----------+-------------+-------------+
+
+         o  TYPE and CMD and STATUS are the values previously specified.
+         o  QARGS refers to the amount of parameters to be parsed.
+         o  ARGS are the arguments (the logs).
+
+
+               
+                     
 
 
 6.  Modification Commands
