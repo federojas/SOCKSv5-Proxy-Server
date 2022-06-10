@@ -9,7 +9,7 @@ Status of this Memo
 
 Acknowledgments
 
-   This memo describes a protocol that is designed to interact with a Socks5d
+   This document describes a protocol that is designed to interact with a Socks5d
    server and obtain metrics from it. It is a session oriented protocol which works 
    over TCP. 
 
@@ -18,13 +18,13 @@ Acknowledgments
    This protocol is intended to provide tools for a client in order to obtain certain 
    information over a running Socks5d server. The client can make requests asking for 
    the historic amount of connections over the server, the quantity of concurrent connections
-   in the server and the quantity of bytes transfered in the server. This protocol does not 
+   in the server and the quantity of bytes transfered in the server, between other things. This protocol does not 
    assure that the metrics are non volatile, meaning that if the server reboots, the statistics 
    may be lost. 
    As this protocol is  session oriented, operations such as adding or deleting user,
    setting a password and ending a connection, are needed.
 
-   Based on socks5d protocol and Username/Password Authentication for SOCKS V5 (rfc 1928 and 1929)
+   Based on socks5d protocol and Username/Password Authentication for SOCKS V5 (rfc 1928 and 1929).
 
 2.  Initial negotiation
     
@@ -40,7 +40,7 @@ Acknowledgments
            +----+------+----------+------+----------+
            
    The VER field contains the current version of the subnegotiation,
-   which is 0x01.
+   which is 0x00.
 
       o The ULEN field contains the length of the UNAME field that follows.
       o The UNAME field contains the username as known to the source operating system (in ASCII charset).
@@ -61,7 +61,7 @@ Acknowledgments
    o A STATUS field of 0x02 indicates an invalid version
    o A STATUS field of 0x03 indicates a server error
   
-   In case of failure, the server returns a `failure' (any STATUS value different than 0x00)
+   In case of failure, the server returns a 'failure' (any STATUS value different than 0x00)
    status, it MUST close the connection.
    
    In case of succesfull connection (STATUS value 0x00), the session is established.
@@ -69,8 +69,7 @@ Acknowledgments
 3.  General request structure
 
    Once the client is authenticated (and in consequence, the session with the server is established).
-   TODO: ESCRIBIR BIEN ESTO DE ABAJO 
-   All client request MUST contain the following structure, and then according to each request can add different parameters: 
+   All client request MUST contain the following base structure (and then according to each request can add different parameters): 
    
                      +------+-----+
                      | TYPE | CMD |
@@ -102,17 +101,18 @@ Acknowledgments
     
 
       
-   In case of Ending a connection no CMD value is needed. TODO: AGREGAR COMANDOS DE CMD ACA
+   In case of Ending a connection no CMD value is needed. TODO: AGREGAR COMANDOS DE CMD ACA SI HACEN FALTA
 
 4.  General response structure
-   
-   As well as in the general request structure, every server response will contain the 
-   a general structure as it follows:
 
+   As well as in the general request structure, every server response will contain a
+   general base structure as it follows (and then according to each request can add different parameters):
+
+   TODO: TENDRIA SENTIDO SACAR EL STATUS FIELD Y Q CUANDO HAYA UN ERROR DEVUELVA UN TYPE INEXISTENTE? Y DE ESA FORMA AHORRARNOS EL BYTE DE STATUS (para mi que no)
                      +--------+-------+----------+
                      |  TYPE  |  CMD  |  STATUS  |
                      +--------+-------+----------+
-                     |   1    |  1    |    1     |
+                     |   1    |   1   |    1     |
                      +--------+-------+----------+
 
   In which CMD refers to the command requested, TYPE refers to the type requested and STATUS refers to the request status,
@@ -123,7 +123,7 @@ Acknowledgments
       o 0x02 unsupported type
       o 0x03 unsupported command
 
-      TODO:  o  X'09' to X'FF' unassigned
+      TODO:  o  X'09' to X'FF' unassigned --> hace falta aclarar algo con esto? 
 
 5.  Query Commands
 
@@ -168,6 +168,7 @@ Acknowledgments
 
       5.2.1   List of users  
          
+         TODO: PREGUNTAR ESTE
          The list of users command returns content within the following structure:
 
                   +-------+-----+----------+-------+------------+
@@ -241,8 +242,8 @@ Acknowledgments
          o  TYPE and CMD and STATUS are the values previously specified.
          o  SPOOFING 1 byte long unsigned integer in which: 
             
-            0x00 means that the spoofing is turned ON.
-            0x01 means that the spoofing is turned OFF.
+            0x00 means that the spoofing is turned OFF.
+            0x01 means that the spoofing is turned ON.
 
 
 6.  Modification Commands
@@ -261,14 +262,14 @@ Acknowledgments
       
       Where:
       
-         o  ULEN is a 1 byte long unsigned integer refering to the lenght of the UNAME field
+         o  ULEN is a 1 byte long unsigned integer refering to the length of the UNAME field that follows.
          o  UNAME contains the username (must be in ASCII charset).
-         o  PLEN field contains a 1 byte long unsigned integer refering to the length of the PASSWD.
+         o  PLEN field contains a 1 byte long unsigned integer refering to the length of the PASSWD field that follows.
          o  PASSWD field contains the password association with the given UNAME (must be in ASCII charset).
          o  ROLE field contains a 1 byte long unsigned integer refering  to the role of the new user.
 
-            0x00 for normal users
-            0x01 for admin users
+               0x00 for normal users
+               0x01 for admin users
 
       6.1.2  Delete User
 
@@ -289,7 +290,11 @@ Acknowledgments
 
             o In case ROLE of the user making the request is 0x01, it means that the user making the request do have 
               admin priviledges, in consecuence, the password field will not be evaluated.
-         TODO: NO SE SI TA BIEN ESTE PLANTEO DEL ADMIN priviledges, SI SOY ADMIN PODRIA DIRECTAMENTE NO MANDAR NADA EN LA CONTRASEÑA? PQ POR AHORA AUNQUE SEA ADMIN TENGO QUE MANDAR ALGO DE CONTENIDO EN LA CONTRASEÑA (QUE NO VA A SER EVALUADO PERO HAY QUE MANDARLO IGUAL)
+        
+         TODO: NO SE SI TA BIEN ESTE PLANTEO DEL ADMIN priviledges,
+          SI SOY ADMIN PODRIA DIRECTAMENTE NO MANDAR NADA EN LA CONTRASEÑA?
+           PQ POR AHORA AUNQUE SEA ADMIN TENGO QUE MANDAR ALGO DE CONTENIDO EN LA CONTRASEÑA
+            (QUE NO VA A SER EVALUADO PERO HAY QUE MANDARLO IGUAL)
 
 
 
@@ -298,7 +303,7 @@ Acknowledgments
             To set a  new password for a user, the following  structure is required:
 
            +------+----------+------+----------+------------+------------------+
-           | ULEN |  UNAME   | PLEN |  PASSWD  | PLEN.NEW   |     PASSWD.NEW   |
+           | ULEN |  UNAME   | PLEN |  PASSWD  |  PLEN.NEW  |     PASSWD.NEW   |
            +------+----------+------+----------+------------+------------------+
            |  1   | 1 to 255 |  1   | 1 to 255 |     1      |      1 to 255    |
            +------+----------+------+----------+------------+------------------+
@@ -328,6 +333,8 @@ Acknowledgments
                   +------+----------+------+----------+
 
            In which the fields are the same specified in 6.1.1 and in 2.
+           It is relevant to state that this command can only be excecuted by users with admin role, meaning 
+           that only an admin can make an existing user admin. In other case, the request will not be evaluated.
 
       6.1.4 Toggle password spoofing
 
@@ -341,7 +348,9 @@ Acknowledgments
                   +--------+-------+---------------+
 
             As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x04
-            and SPOOFING is a 1 byte long unsigned 
+            and SPOOFING is a 1 byte long unsigned integer.
+               0x00 to turn spoofing OFF
+               0x01 to turn spoofing ON 
    
    6.2   Modification Responses  
 
