@@ -93,7 +93,6 @@ Acknowledgments
       o  0x05 to get the status of the password spoofing over the server
       o  0x06 to get access to the logs of the server
 
-Log access 
    
    The associated CMD values for Modification request are the following:
       o  0x00 to Add a user 
@@ -101,6 +100,7 @@ Log access
       o  0x02 to set a new password 
       o  0x03 to set a user admin priviledges
       o  0x04 to toggle password spoofing in the server
+      o  0x05 to toggle authentication in the server
     
 
       
@@ -160,10 +160,10 @@ Log access
          
          CMD value 0x03. Command used to get the quantity of bytes transfered in the server.
       
-      //TODO: ES NECESARIO? QUE SNIFEA?
-      5.1.5   Current status of the password spoofing  
+      //TODO: ES NECESARIO?
+      5.1.5   Current status of the password disector  
 
-         CMD value 0x04. Command used to get the status of the password spoofing over POP3 protocol over the server.
+         CMD value 0x04. Command used to get the status of the password disector over the server (over POP3 protocol).
 
       5.1.6   Bytes transfered from a user  TODO: ESTO NO SE SI ES MEDIO UNA FLASHEADA
 
@@ -254,9 +254,9 @@ Log access
          o  TYPE and CMD and STATUS are the values previously specified.
          o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.
       
-      5.2.5   Current status of the password spoofing 
+      5.2.5   Current status of the password disector 
             
-         The current status of the password spoofing over the server returns content within the following structure:
+         The current status of the password disector over the server (over POP3 protocol) returns content within the following structure:
 
                   +--------+-------+----------+---------------+
                   |  TYPE  |  CMD  |  STATUS  |    SPOOFING   |
@@ -300,6 +300,8 @@ Log access
          o  QARGS refers to the amount of parameters to be parsed.
          o  ARGS are the arguments (the logs).
 
+      
+
 
                
                      
@@ -319,7 +321,6 @@ Log access
             |   1   |  1  |  1   | 1 to 255 |  1   | 1 to 255 |    1     |
             +-------+-----+------+----------+------+----------+----------+
       
-      Where:
       
          o  ULEN is a 1 byte long unsigned integer refering to the length of the UNAME field that follows.
          o  UNAME contains the username (must be in ASCII charset).
@@ -334,13 +335,14 @@ Log access
 
             To delete a user, the following  structure is required:
 
-           +------+----------+------+----------+
-           | ULEN |  UNAME   | PLEN |  PASSWD  |
-           +------+----------+------+----------+
-           |  1   | 1 to 255 |  1   | 1 to 255 |
-           +------+----------+------+----------+
+           +------+-----+------+----------+------+----------+
+           | TYPE | CMD | ULEN |  UNAME   | PLEN |  PASSWD  |
+           +------+-----+------+----------+------+----------+
+           |   1  |  1  |  1   | 1 to 255 |  1   | 1 to 255 |
+           +------+-----+-----+----------+------+----------+
 
-         In which ULEN, UNAME,PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
+         In which TYPE and CMD values are the specified in "General request structure" section and
+         ULEN, UNAME,PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
          It is important to specify that the UNAME value must exist in order to be deleted.
          
             o In case ROLE of the user making the request is 0x00, it means that the user making the request doesn't have 
@@ -349,6 +351,8 @@ Log access
 
             o In case ROLE of the user making the request is 0x01, it means that the user making the request do have 
               admin priviledges, in consecuence, the password field will not be evaluated.
+
+            o In case authentication is turned off the password field will not be evaluated.
         
          TODO: NO SE SI TA BIEN ESTE PLANTEO DEL ADMIN priviledges,
           SI SOY ADMIN PODRIA DIRECTAMENTE NO MANDAR NADA EN LA CONTRASEÑA?
@@ -361,14 +365,15 @@ Log access
 
             To set a  new password for a user, the following  structure is required:
 
-           +------+----------+------+----------+------------+------------------+
-           | ULEN |  UNAME   | PLEN |  PASSWD  |  PLEN.NEW  |     PASSWD.NEW   |
-           +------+----------+------+----------+------------+------------------+
-           |  1   | 1 to 255 |  1   | 1 to 255 |     1      |      1 to 255    |
-           +------+----------+------+----------+------------+------------------+
+           +------+-----+------+----------+------+----------+------------+------------------+
+           | TYPE | CMD | ULEN |  UNAME   | PLEN |  PASSWD  |  PLEN.NEW  |     PASSWD.NEW   |
+           +------+-----+------+----------+------+----------+------------+------------------+
+           |   1  |  1  |  1   | 1 to 255 |  1   | 1 to 255 |     1      |      1 to 255    |
+           +------+-----+------+----------+------+----------+------------+------------------+
 
-         In which ULEN, UNAME, PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
-         PLEN.NEW and PASSWD.NEW are the same  type as PLEN and PASSWD and contains the new password 
+         In which TYPE and  CMD values are the specified in "General request structure" section
+         and ULEN, UNAME, PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
+         PLEN.NEW and PASSWD.NEW have the same structure type as PLEN and PASSWD and contains the new password 
          specifications.
          It is important to specify that the UNAME value must exist in order to be deleted.
 
@@ -378,6 +383,8 @@ Log access
 
             o In case ROLE of the user making the request is 0x01, it means that the user making the request do have 
               admin priviledges, in consecuence, the password field will not be evaluated.
+            
+            o In case authentication is turned off the password field will not be evaluated.
 
       6.1.3  Give a user admin priviledges
 
@@ -385,15 +392,17 @@ Log access
 
             To set a  new password for a user, the following  structure is required:
 
-                  +------+----------+------+----------+
-                  | ULEN |  UNAME   | PLEN |  PASSWD  |
-                  +------+----------+------+----------+
-                  |  1   | 1 to 255 |  1   | 1 to 255 |
-                  +------+----------+------+----------+
+                  +------+-----+------+----------+------+----------+
+                  | TYPE | CMD | ULEN |  UNAME   | PLEN |  PASSWD  |
+                  +------+-----+------+----------+------+----------+
+                  |   1  |  1  |  1   | 1 to 255 |  1   | 1 to 255 |
+                  +------+-----+------+----------+------+----------+
 
            In which the fields are the same specified in 6.1.1 and in 2.
            It is relevant to state that this command can only be excecuted by users with admin role, meaning 
-           that only an admin can make an existing user admin. In other case, the request will not be evaluated.
+           that only an admin can make an existing user admin.
+           In any other case, the request will not be evaluated, EXCEPT authentication is turned off. 
+           This case is analogous to the case that an admin user is making the request.
 
       6.1.4 Toggle password spoofing
 
@@ -411,6 +420,18 @@ Log access
                0x00 to turn spoofing OFF
                0x01 to turn spoofing ON 
    
+      6.1.5 Toggle authentication in the server
+                  
+                  +--------+-------+---------------+
+                  |  TYPE  |  CMD  |     AUTH      |
+                  +--------+-------+---------------+
+                  |   1    |   1   |       1       |
+                  +--------+-------+---------------+
+
+            In which AUTH is a 1 byte long unsigned integer and its values can be:
+               0x00 to turn authentication OFF
+               0x01 to turn authentication ON 
+
    6.2   Modification Responses  
 
          All modification requests have the following response structure:
