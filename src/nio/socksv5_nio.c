@@ -373,9 +373,7 @@ fail:
 //    // selector_register(key->s, destSocketFd, &activeSocketHandler, OP_WRITE, key->data);
 // }
 
-////////////////////////////////////////////////////////////////////////////////
-// HELLO
-////////////////////////////////////////////////////////////////////////////////
+//////////// HELLO //////////
 
 /** callback del parser utilizado en `read_hello' */
 static void
@@ -447,13 +445,15 @@ hello_process(const struct hello_st* d) {
     return ret;
 }
 
-static void hello_read_close(const unsigned state, struct selector_key *key) {
+static void 
+hello_read_close(const unsigned state, struct selector_key *key) {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
 
     hello_parser_close(&d->parser);
 }
 
-static unsigned hello_write(struct selector_key *key)
+static unsigned 
+hello_write(struct selector_key *key)
 {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
 
@@ -492,7 +492,7 @@ static unsigned hello_write(struct selector_key *key)
     return ret;
 }
 
-/** definiciÃ³n de handlers para cada estado */
+/** definicionn de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
     {
         .state            = HELLO_READ,
@@ -506,7 +506,8 @@ static const struct state_definition client_statbl[] = {
 
 ////////////////  AUTH  ////////////////
 
-static void auth_init(struct selector_key *key)
+static void 
+auth_init(struct selector_key *key)
 {
     struct auth_st *d = &ATTACHMENT(key)->client.auth;
 
@@ -517,12 +518,14 @@ static void auth_init(struct selector_key *key)
     d->pass = &d->parser.pass;
 }
 
-static uint8_t check_credentials(const struct auth_st *d){
+static uint8_t 
+check_credentials(const struct auth_st *d){
     if(registed((char*)d->usr->uname,(char*)d->pass->passwd) != 0) return AUTH_SUCCESS;
     return AUTH_FAIL;
 }
 
-static unsigned auth_process(struct auth_st *d){
+static unsigned 
+auth_process(struct auth_st *d){
     unsigned ret = AUTH_WRITE;
     uint8_t status = check_credentials(d);
     if(auth_marshal(d->wb,status,d->parser.version) == -1){
@@ -531,7 +534,9 @@ static unsigned auth_process(struct auth_st *d){
     d->status = status;
     return ret;
 }
-static unsigned auth_read(struct selector_key *key){
+
+static unsigned 
+auth_read(struct selector_key *key){
     unsigned ret = AUTH_READ;
     struct auth_st * d = &ATTACHMENT(key)->client.auth;
     bool error = false;
@@ -597,7 +602,8 @@ static unsigned auth_write(struct selector_key *key){
 
 ////////////////  REQUEST  ////////////////
 
-static void * request_resolv_blocking(void * data) {
+static void * 
+request_resolv_blocking(void * data) {
     struct selector_key *key = (struct selector_key *) data;
     struct socks5 *s = ATTACHMENT(key);
 
@@ -627,7 +633,8 @@ static void * request_resolv_blocking(void * data) {
     return 0;
 }
 
-static unsigned request_resolv_done(struct selector_key *key) {
+static unsigned 
+request_resolv_done(struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
     struct socks5 *s = ATTACHMENT(KEY);
 
@@ -646,7 +653,8 @@ static unsigned request_resolv_done(struct selector_key *key) {
     return request_connect(key, d);
 }
 
-static void request_init(const unsigned state, struct selector_key *key) {
+static void 
+request_init(const unsigned state, struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
@@ -662,14 +670,110 @@ static void request_init(const unsigned state, struct selector_key *key) {
     d->origin_domain = &ATTACHMENT(key)->origin_domain;
 }
 
-////////////////////////////////////////
+static unsigned
+request_process (struct selector_key* key, struct request_st* d) {
+    unsigned ret;
+    pthread_ t tid;
+
+    switch (d->request.cmd) {
+        case socks_req_cmd_connect:
+            // esto mejoraría enormemente de haber usado
+            // sockaddr_sto rage en el request
+            
+            switch (d->request.dest_addr_type) {
+                case socks_req_addrtype_ipv4: {
+                    ATTACHMENT (key)->origin_domain = AF_INET;
+                    d->request.dest_addr.ipv4.sin_port = d->request.dest_port;
+                    ATTACHMENT (key)->origin_addr_len = sizeof (d->request.dest_addr.ipv4);
+                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr, sizeof (drequest.dest_addr.ipv4));
+                    ret = request_connect(key , d);
+                    break;
+
+                } case socks_req_addrtype_ipv6: {
+                    ATTACHMENT (key)->origin_domain = AF_INET6;
+                    d->request.dest_addr.ipv6.sin6_port = d->request.dest_port;
+                    ATTACHMENT (key) ->origin_addr_len = sizeof(d->request.dest_addr.ipv6);
+                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr, sizeof(d->request.dest_addr.ipv6));
+                    ret = request_connect(key , d);
+                    break;
+
+                } case socks_req_addrtype_domain: {
+                    // OBS: la resolucion de nombres es bloqueante
+                    // no la podemos acceder aca mismo
+                    // por lo que habra que hacer un hilo
+                    struct selector_key* k = malloc(sizeof(*key));
+                    if (k == NULL) {
+                        ret = REQUEST_WRITE;
+                        d->status = status_general_SOCKS_server_failure;
+                        selector_set_interest_key(key, OP_WRITE);
+                    } else {
+                        memcpy(k, key, sizeof(*k));
+                        if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
+                            ret = REQUEST_WRITE;
+                            d->status = status_general_SOCKS_server_failure;
+                            selector_set_interest_key(key, OP_WRITE);
+                        } else {
+                            ret = REQUEST_RESOLV;
+                            // hasta que no resuelva el nombre, no hay que hacer nada
+                            selector_set_interest_key(key, OP_NOOP);
+                        }
+                    }
+                    break;
+
+                } default: {
+                    ret = REQUEST_WRITE;
+                    d->status = status_address_type_not_supported;
+                    selector_set_interest_key(key, OP_WRITE);
+                }
+            }
+            break;
+        case socks_req_cmd_bind:
+        case socks_req_cmd_associate:
+        default:
+            d->status = status_command_not_supported;
+            ret = REQUEST_WRITE;
+            break;
+    }
+
+    return ret;
+}
+
+static unsigned
+request_read (struct selector_key *key) {
+    struct request_st * d = &ATTACHMENT(key)->client.request;
+    
+    buffer *b       = d->rb;
+    unsigned ret    = REQUEST_READ;
+    bool error      = false;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    ptr = buffer_write_ptr(b, &count);
+    n = recv(key->fd, ptr, count, 0);
+    if (n > 0) {
+        buffer_write_adv(b, n);
+        int st = request_consume(b, &d->parser, &error);
+        if (request_is_done(st, 0)) {
+            ret = request_process(key, d);
+        }
+    } else {
+        ret = ERROR;
+    }
+
+    return error ? ERROR : ret;
+}
+
+static void
+request_read_close(const unsigned state, struct selector_key *key) {
+    struct request_st * d = &ATTACHMENT(key)->client.request;
+
+    request_close(&d->parser);
+}
 
 
-////////////////  REQUEST CONNECTING ////////////////
-
-
-
-static void request_connecting_init(const unsigned state, struct selector_key *key) {
+static void 
+request_connecting_init(const unsigned state, struct selector_key *key) {
     struct connecting *d = &ATTACHMENT(key)->orig.conn;
 
     d->client_fd = &ATTACHMENT(key)->client_fd;
@@ -678,137 +782,98 @@ static void request_connecting_init(const unsigned state, struct selector_key *k
     d->wb = &ATTACHMENT(key)->write_buffer;
 }
 
-static unsigned request_connect(struct selector_key *key, struct request_st *d)
-{
+/** intenta establecer una conexión con el origin server */
+static unsigned
+request_connect (struct selector key *key, struct request_st *d) {
     bool error = false;
-    bool fd_registered = false;
-    struct socks5 *data = ATTACHMENT(key);
-    int *fd = d->origin_fd;
+    // da legibilidad
+    enum socks_response_status status   = d->status;
+    int *fd                             = d->origin_fd;
 
-    if(*fd != -1) { // si fd es distinto de -1 es porque hubo antes una conexión fallida
-        fd_registered = true;
-
-        if(close(*fd) == -1) {
-            error = true;
-            goto finally;
-        }
-    }
-
-    unsigned ret = REQUEST_CONNECTING;
-    *fd = socket(data->origin_domain, SOCK_STREAM, 0);
-    if (*fd == -1)
-    {
+    // Creo el socket
+    *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0):
+    if (*fd == -1) {
         error = true;
         goto finally;
     }
-
-    if (selector_fd_set_nio(*fd) == -1)
-    {
+    // Lo seteo como no bloqueante
+    if (selector_fd_set_nio(*fd) == -1) {
         goto finally;
     }
-
-    if (connect(*fd, (const struct sockaddr *)&data->origin_addr,
-                data->origin_addr_len) == -1)
-    {
-
-        if (errno == EINPROGRESS)
-        {
-            // hay que esperar a la conexión
-
-            // dejamos de pollear el socket del cliente
+    
+    // Inicio la conexion 
+    if (-1 == connect(*fd, (const struct sockaddr *)&ATTACHMENT (key)->origin_addr, ATTACHMENT (key)->origin_addr_len)) {
+        if(errno == EINPROGRESS) {
+            //  es esperable,tenemos que esperar a la conexión
+            // dejamos de depollear el socket del cliente
             selector_status st = selector_set_interest_key(key, OP_NOOP);
-            if (st != SELECTOR_SUCCESS)
-            {
+            if (SELECTOR_SUCCESS != st) {
                 error = true;
                 goto finally;
             }
 
-            // esperamos la conexión en el nuevo socket
-            if(!fd_registered) {
-                st = selector_register(key->s, *fd, &socks5_handler, OP_WRITE, key->data);
-            }
-            else {
-                st = selector_set_interest(key->s, *fd, OP_WRITE);
-            }
-
-            if (st != SELECTOR_SUCCESS)
-            {
+            // esperamos la conexion en el nuevo socket
+            st = selector_register(key->s, *fd, &socks5_handler, OP_WRITE, key->data);
+            if (SELECTOR_SUCCESS != st) {
                 error = true;
                 goto finally;
             }
-        }
-        else
-        {
-            // If connection is unsuccessful, send error to user
-            data->client.request.status = errno_to_socks(errno);
-            if (-1 != request_marshal(data->client.request.wb, data->client.request.status, data->client.request.request.dest_addr_type, data->client.request.request.dest_addr, data->client.request.request.dest_port))
-            {
-                selector_set_interest(key->s, data->client_fd, OP_WRITE);
-                selector_status st = selector_register(key->s, *fd, &socks5_handler, OP_NOOP, key->data); // registro el nuevo fd pero lo seteo en NOOP porque no se pudo establecer la conexión
-                if (st != SELECTOR_SUCCESS)
-                {
-                    error = true;
-                    goto finally;
-                }
-                
-                ret = REQUEST_WRITE;
-            }
-            else {
-                error = true;
-            }
-            ATTACHMENT(key)->socks_info.status = data->client.request.status;   
+            ATTACHMENT(key)->references += 1;
+        } else {
+            status = errno_to_socks(errno);
+            error = true;
             goto finally;
         }
+    } else {
+        // estamos conectados sin esperar... no parece posible
+        // saltariamos directamente a COPY
+        abort();
     }
 
 finally:
-    return error ? ERROR : ret;
-}
-
-// la conexión ha sido establecida (o falló), parsear respuesta
-static unsigned request_connecting(struct selector_key *key)
-{
-    int error;
-    socklen_t len = sizeof(error);
-    unsigned ret = REQUEST_CONNECTING;
-
-    struct socks5 *data = ATTACHMENT(key);
-    int *fd = data->orig.conn.origin_fd;
-    if (getsockopt(*fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0)
-    {
-        //Escribirle en el buffer de escritura al cliente
-        selector_set_interest(key->s, *data->orig.conn.client_fd, OP_WRITE);
-        
-        if (error == 0)
-        {
-            data->client.request.status = status_succeeded;
-            set_historical_conections(get_historical_conections() +1);
+    if (error) {
+        if (*fd != -1) {
+            close(*fd);
+            *fd = -1;
         }
-        else {
-            data->client.request.status = errno_to_socks(error);
-
-            if(SELECTOR_SUCCESS != selector_set_interest_key(key, OP_NOOP)) {
-                return ERROR;
-            }
-
-            ATTACHMENT(key)->socks_info.status = data->client.request.status;
-            log_access(&ATTACHMENT(key)->socks_info);
-            return REQUEST_RESOLV;
-        }
-
-        if (-1 != request_marshal(data->client.request.wb, data->client.request.status, data->client.request.request.dest_addr_type, data->client.request.request.dest_addr, data->client.request.request.dest_port))
-        {
-            selector_set_interest(key->s, *data->orig.conn.origin_fd, OP_READ);
-            
-            ret = REQUEST_WRITE;
-        }
-        else {
-            ret = ERROR;
-        }
-        ATTACHMENT(key)->socks_info.status = data->client.request.status;    
     }
 
-    return ret;
+    d->status = status;
+
+    // El siguiente estado es el Connecting
+    return REQUEST_CONNECTING;
 }
+
+// la conexion ha sido establecida (o fallo)
+static unsigned
+request_connecting(struct selector_key *key) {
+    int error;
+    socklen_t len = sizeof (error);
+    struct connecting *d = &ATTACHMENT(key)->orig.conn;
+
+    if (getsockopt (key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+        *d->status = status_general_SOCKS_server_failure;
+    }
+    else {
+        if(error == 0) {
+            *d->status = status_succeeded;
+            *d->origin_fd = key->fd;
+        } else{
+            *d->status = errno_to_socks (error)
+        }
+    }
+    
+    if(-1 == request_marshall(d->wb, *d->status)) {
+        *d->status = status_general_SOCKS_server_failure;
+        abort(); // el buffer tiene que ser mas grande en la variable
+    } 
+    selector_status s = 0;
+    s |= selector_set_interest      (key->s, *d->client_fd, OP_WRITE);
+    s |= selector_set_interest_key  (key, OP_NOOP);
+
+    // Mandamos la respuesta al cliente
+    return SELECTOR_SUCCESS == s ? REQUEST_WRITE : ERROR;
+}
+
 
 ////////////////////////////////////////
