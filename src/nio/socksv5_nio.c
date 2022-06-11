@@ -438,6 +438,7 @@ fail:
     socks5_destroy(state);
 }
 
+//TODO SANDRINI TRANPSARENTE
 
 //     // Como soy un tcp transparente, debo abrir un socket activo con el destino final
 //     // y pasarle todo
@@ -455,5 +456,36 @@ fail:
 //     // esta linea va?
 //    // selector_register(key->s, destSocketFd, &activeSocketHandler, OP_WRITE, key->data);
 // }
+
+
+static void * request_resolv_blocking(void * data) {
+    struct selector_key *key = (struct selector_key *) data;
+    struct socks5 *s = ATTACHMENT(key);
+
+    pthread_detach(pthread_self());
+    s->origin_resolution = 0;
+
+    struct  addrinfo hints = {
+        .ai_family = AF_UNSPEC,
+        .ai_socktype = SOCK_STREAM,
+        .ai_flags = AI_PASSIVE,
+        .ai_protocol = 0,
+        .ai_canonname = NULL,
+        .ai_addr = NULL,
+        .ai_next = NULL,
+    };
+
+    char buff[7]; //TODO 7??? HAY QUE DECIDIR EL TAMAÑO ACA?
+    snprintf(buff, sizeof(buff), "%d", ntohs(s->client.request.request.dest_port));
+
+    //TODO MANEJO ERRORES DE GETADDRINFO
+    getaddrinfo(s->client.request.request.dest_addr.fqdn, buff, &hints, &s->origin_resolution);
+
+    selector_notify_block(key->s, key->fd);
+
+    free(data);
+
+    return 0;
+}
 
 
