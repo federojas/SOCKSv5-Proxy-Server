@@ -6,7 +6,6 @@
 #include <netinet/in.h>
 #include "buffer.h"
 
-static const uint8_t SOCKS5_VERSION = 0x05;
 static const int IPV4_LENGTH = 4;
 static const int IPV6_LENGTH = 16;
 static const int PORT_LENGTH = 2;

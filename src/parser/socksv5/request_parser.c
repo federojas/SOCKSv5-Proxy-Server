@@ -1,6 +1,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include "request_parser.h"
+#include "socks_utils.h"
 
 
 // TODO: mejorar estilo del codigo

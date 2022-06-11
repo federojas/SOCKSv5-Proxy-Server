@@ -1,5 +1,6 @@
 #include "hello_parser.h"
 #include "logger.h"
+#include "socks_utils.h"
 
 void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data) {
     p->current_state = HELLO_VERSION;
@@ -60,28 +61,15 @@ bool hello_parser_consume(buffer *b, hello_parser *p, bool *errored) {
 }
 
 bool hello_parser_is_done(enum hello_parser_state state, bool *errored) {
-
-    if(errored != NULL)
-        *errored = false;
-
-    switch(state) {
-        case HELLO_DONE:
-            return true;
-        break;
-
-        case HELLO_VERSION:
-        case HELLO_NMETHODS:
-        case HELLO_METHODS:
-            return false;
-        break;
-
-        case HELLO_TRAP:
-        default:
-            if(errored != NULL)
-                *errored = true;
-            return true;
-        break;
+    if(errored != NULL) {
+        if(state == HELLO_TRAP)
+            *errored = true;
+        else
+            *errored = false;
     }
+    if(state == HELLO_TRAP || state == HELLO_DONE)
+        return true;
+    return false;
 }
 
 char * hello_parser_error_report(enum hello_parser_state state) {
