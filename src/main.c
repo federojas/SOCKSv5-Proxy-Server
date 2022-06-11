@@ -11,6 +11,7 @@
 #include <netinet/tcp.h>
 #include "selector.h"
 #include "logger.h"
+#include "socksv5_nio.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
@@ -80,48 +81,7 @@ static fd_handler activeSocketHandler = {
     .handle_close = NULL
 };
 
-void socksv5_passive_accept(struct selector_key *key){
-
-    struct sockaddr_storage clntAddr; // Client address
-	// Set length of client address structure (in-out parameter)
-	socklen_t clntAddrLen = sizeof(clntAddr);
-
-	// Wait for a client to connect 
-    // TODO: aca me puedo bloquear?
-	int clntSock = accept(key->fd, (struct sockaddr *) &clntAddr, &clntAddrLen);
-	if (clntSock < 0) {
-		log(ERROR, "accept() failed");
-		return -1;
-	}
-
-	// clntSock is connected to a client!
-	printSocketAddress((struct sockaddr *) &clntAddr, addrBuffer);
-	log(INFO, "Handling client %s", addrBuffer);
-
-
-    // lo registro en el selector para esperar que me escriba algo
-    selector_register(key->s, clntSock, &activeSocketHandler, OP_READ, key->data);
-
-
-    // Como soy un tcp transparente, debo abrir un socket activo con el destino final
-    // y pasarle todo
-    // aca estoy hardcodeando una direccion cualquiera cuando en realidad
-    // deberia registrar una tarea bloqueante (getaddrinfo) que me 
-    // averigue la addrinfo del destino
-    int destSocketFd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serSockAddr = {.sin_family = AF_INET,
-        .sin_addr.s_addr = inet_addr("127.0.0.1"),
-        .sin_port = htons(DEST_PORT)};
-
-    //TODO: el connect es bloqueante, para solucionar esto tendria que 
-    // registrarlo como escritura
-    connect(destSocketFd, (struct sockaddr *) &serSockAddr, sizeof(serSockAddr));
-    // esta linea va?
-   // selector_register(key->s, destSocketFd, &activeSocketHandler, OP_WRITE, key->data);
-}
-
-int
-main(const int argc, const char **argv) {
+int main(const int argc, const char **argv) {
     unsigned port = PORT;
 
     if(argc == 1) {
@@ -130,7 +90,7 @@ main(const int argc, const char **argv) {
         char *end     = 0;
         const long sl = strtol(argv[1], &end, 10);
 
-        if (end == argv[1]|| '\0' != *end 
+        if (end == argv[1] || '\0' != *end 
            || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
            || sl < 0 || sl > USHRT_MAX) {
             fprintf(stderr, "port should be an integer: %s\n", argv[1]);
@@ -205,12 +165,12 @@ main(const int argc, const char **argv) {
 
     // probablemente aca me falta guardar la tarea bloqueante 
     // del getaddrinfo
-    const struct fd_handler tcpTransparentProxy = {
+    const struct fd_handler socksv5 = {
         .handle_read       = socksv5_passive_accept,
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server, &tcpTransparentProxy,
+    ss = selector_register(selector, server, &socksv5,
                                               OP_READ, NULL);
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";

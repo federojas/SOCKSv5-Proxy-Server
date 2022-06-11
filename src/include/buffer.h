@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <unistd.h>  // size_t, ssize_t
 
+#define BUFFER_SIZE 4096
+
 /**
  * buffer.c - buffer con acceso directo (útil para I/O) que mantiene
  *            mantiene puntero de lectura y de escritura.

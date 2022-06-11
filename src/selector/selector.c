@@ -574,8 +574,7 @@ finally:
     return ret;
 }
 
-int
-selector_fd_set_nio(const int fd) {
+int selector_fd_set_nio(const int fd) {
     int ret = 0;
     int flags = fcntl(fd, F_GETFD, 0);
     if(flags == -1) {
