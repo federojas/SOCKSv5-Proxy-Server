@@ -1,6 +1,8 @@
 #ifndef STM_H_wL7YxN65ZHqKGvCPrNbPtMJgL8B
 #define STM_H_wL7YxN65ZHqKGvCPrNbPtMJgL8B
 
+//TODO aca hay que agregar #include "selector.h"
+
 /**
  * stm.c - pequeño motor de maquina de estados donde los eventos son los
  *         del selector.c
@@ -34,6 +36,7 @@ struct state_machine {
     const struct state_definition *current;
 };
 
+//TODO hay que volar esta linea (40)
 struct selector_key *key;
 
 /**
