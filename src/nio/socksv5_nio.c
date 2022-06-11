@@ -318,6 +318,51 @@ hello_process(const struct hello_st* d) {
     return ret;
 }
 
+static void hello_read_close(const unsigned state, struct selector_key *key) {
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+
+    hello_parser_close(&d->parser);
+}
+
+static unsigned hello_write(struct selector_key *key)
+{
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+
+    unsigned ret = HELLO_WRITE;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    ptr = buffer_read_ptr(d->wb, &count);
+    n = send(key->fd, ptr, count, MSG_NOSIGNAL);
+    if (n == -1)
+    {
+        ret = ERROR;
+    }
+    else
+    {
+        buffer_read_adv(d->wb, n);
+        if (!buffer_can_read(d->wb))
+        {
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ))
+            {
+                if(d->method == METHOD_USERNAME_PASSWORD){
+                    ret = AUTH_READ;
+                }
+                else{
+                    ret = REQUEST_READ;
+                }
+            }
+            else
+            {
+                ret = ERROR;
+            }
+        }
+    }
+
+    return ret;
+}
+
 /** definiciÃ³n de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
     {
@@ -487,5 +532,50 @@ static void * request_resolv_blocking(void * data) {
 
     return 0;
 }
+
+static unsigned request_resolv_done(struct selector_key *key) {
+    struct request_st * d = &ATTACHMENT(key)->client.request;
+    struct socks5 *s = ATTACHMENT(KEY);
+
+    if(s->origin_resolution == 0) {
+        d->status = status_general_SOCKS_server_failure;
+    } else {
+        s->origin_domain = s->origin_resolution->ai_family;
+        s->origin_addr_len = s->origin_resolution->ai_addrlen;
+        memcpy(&s->origin_addr, 
+                s->origin_resolution->ai_addr,
+                s->origin_resolution->ai_addrlen);
+        freeaddrinfo(s->origin_resolution);
+        s->origin_resolution = 0;
+    }
+
+    return request_connect(key, d);
+}
+
+static void request_init(const unsigned state, struct selector_key *key) {
+    struct request_st * d = &ATTACHMENT(key)->client.request;
+
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->wb = &(ATTACHMENT(key)->write_buffer);
+    d->parser.request = &d->request;
+    d->status = status_general_SOCKS_server_failure;
+    request_parser_init(&d->parser);
+    d->client_fd = &ATTACHMENT(key)->client_fd;
+    d->origin_fd = &ATTACHMENT(key)->origin_fd;
+
+    d->origin_addr = &ATTACHMENT(key)->origin_addr;
+    d->origin_addr_len = &ATTACHMENT(key)->origin_addr_len;
+    d->origin_domain = &ATTACHMENT(key)->origin_domain;
+}
+
+// TODO FALTA
+// static void request_connecting_init(const unsigned state, struct selector_key *key) {
+//     struct connecting *d = &ATTACHMENT(key)->orig.conn;
+
+//     d->client_fd = &ATTACHMENT(key)->client_fd;
+//     d->origin_fd = &ATTACHMENT(key)->origin_fd;
+//     d->status = &ATTACHMENT(key)->client.request.status;
+//     d->wb = &ATTACHMENT(key)->write_buffer;
+// }
 
 
