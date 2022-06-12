@@ -138,6 +138,12 @@ static const struct state_definition client_statbl[] = {
         .on_write_ready   = hello_write,
     },
     {
+        .state=AUTH_READ,
+    },
+    {
+        .state=AUTH_WRITE,
+    },
+    {
         .state            = REQUEST_READ,
         .on_arrival       = request_init,
         .on_read_ready     = request_read,

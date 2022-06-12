@@ -10,6 +10,7 @@ OBJECTS= ./logger/logger.o ./net_utils/util.o ./selector/selector.o ./stm/stm.o 
 
 #all:main transparent
 #all: transparent
+#TODO: LOS LDFLAGS NO ANDAN
 all: ${OBJECTS}
 	$(CC) $(CFLAGS) -o server main.c $(OBJECTS)
 
