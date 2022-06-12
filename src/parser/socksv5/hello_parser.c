@@ -88,7 +88,7 @@ char * hello_parser_error_report(enum hello_parser_state state) {
 
         case HELLO_TRAP:
         default:
-            return "Hello-parser: on trap state";
+            return "Hello-parser: unsupported version";
         break;
     }
 }
@@ -104,6 +104,7 @@ char hello_parser_marshal(buffer *b, const uint8_t method){
     buffer_write_adv(b,2);
     return 2;
 }
+
 extern void hello_parser_close(struct hello_parser *p){
     /* no hay nada que liberar*/
     //TODO: REVISAR
