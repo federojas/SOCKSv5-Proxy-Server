@@ -86,15 +86,15 @@ char * auth_parser_error_report(enum auth_trap_cause error_cause) {
         break;
 
         case AUTH_INVALID_VERSION:
-            return "Auth-parser: Invalid version provided";
+            return "Auth-parser: invalid version provided";
         break;
 
         case AUTH_INVALID_USERNAME_LEN:
-            return "Auth-parser: invalid username length: must be 1 to 255";
+            return "Auth-parser: invalid username length";
         break;
 
         case AUTH_INVALID_PASSWORD_LEN:
-            return "Auth-parser: invalid password length: must be 1 to 255";
+            return "Auth-parser: invalid password length";
         break;
 
         default: return "Auth-parser: trap state"; break;

@@ -9,9 +9,9 @@
 #include <sys/socket.h>  // socket
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include "./include/selector.h"
-#include "./include/logger.h"
-#include "./include/socksv5_nio.h"
+#include "selector.h"
+#include "logger.h"
+#include "socksv5_nio.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
