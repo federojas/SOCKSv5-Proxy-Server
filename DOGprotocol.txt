@@ -49,7 +49,7 @@ Acknowledgments
       o  Toggle password spoofing in the server
       o  Toggle authentication in the server
     
-2. Data definitions //CAMBIO
+2. Data definitions
 
    Big endian order (network order) is to be used in multiple byte fields.
    Big endian: most-significant-octet-first encoding.
@@ -122,16 +122,12 @@ The associated CMD values for Get requests are the following:
    o  0x03 to get the quantity of bytes transfered
    o  0x04 to get the status of password spoofing over POP3 in the server
    o  0x05 to get the status of authentication in the server
-   o  0x06 to get the quantity of bytes transfered in the server // VUELA ?????
-   o  0x07 to get access to the logs of the server // VUELA ?????
 
 The associated CMD values for Alterations request are the following:
    o  0x00 to Add a user 
    o  0x01 to Delete a user 
    o  0x02 to toggle password spoofing over POP3 in the server
    o  0x03 to toggle authentication in the server
-   o  0x04 to set a new password // VUELA ?????
-   o  0x05 to set a user admin priviledges // VUELA ?????
    
 In case of Ending a connection no CMD value is needed. TODO: AGREGAR COMANDOS DE CMD ACA SI HACEN FALTA
 
@@ -164,7 +160,7 @@ STATUS refers to the request status, and its values can be:
 
             +------+-----+
             | TYPE | CMD |
-            +------+-----+ //CAMBIO
+            +------+-----+
             | 0x0  |0x00 |
             +------+-----+
             
@@ -182,8 +178,7 @@ STATUS refers to the request status, and its values can be:
                      +----------+------------+
 
             Where:TODO:ESCRIBIR BIEN 
-            o  STATUS can take the values previously specified.
-            o  USRS refers to the user list itself in ASCII charset, where the first byte indicates the username length.
+               o  USRS refers to the user list itself in ASCII charset, where the first byte indicates the username length.
 
 
       6.2   Historic amount of connections
@@ -192,7 +187,7 @@ STATUS refers to the request status, and its values can be:
 
             +------+-----+
             | TYPE | CMD |
-            +------+-----+ //CAMBIO
+            +------+-----+
             | 0x0  |0x01 |
             +------+-----+
 
@@ -210,8 +205,7 @@ STATUS refers to the request status, and its values can be:
             
             Where: 
             TODO: los 8  bytes son pensados en funcion de escalabilidad pero realmente a nosotros con 2 nos alcanza no?
-            o  STATUS can take the values previously specified.
-            o  QTY specifies the amount of bytes transfered.
+               o  QTY specifies the amount of bytes transfered.
 
       6.3   Quantity of current  connections
 
@@ -219,7 +213,7 @@ STATUS refers to the request status, and its values can be:
 
             +------+-----+
             | TYPE | CMD |
-            +------+-----+ //CAMBIO
+            +------+-----+
             | 0x0  |0x02 |
             +------+-----+
             
@@ -235,9 +229,7 @@ STATUS refers to the request status, and its values can be:
                      |    1     |   2   |
                      +----------+-------+
             Where:
-
-            o  STATUS can take the values previously specified.
-            o  QTY specifies the amount of users listed.
+               o  QTY specifies the amount of users listed.
 
       6.4   Quantity of bytes transfered  
 
@@ -245,7 +237,7 @@ STATUS refers to the request status, and its values can be:
 
             +------+-----+
             | TYPE | CMD |
-            +------+-----+ //CAMBIO
+            +------+-----+
             | 0x0  |0x03 |
             +------+-----+
             
@@ -262,9 +254,7 @@ STATUS refers to the request status, and its values can be:
                      +----------+-------+
 
             Where:
-
-            o  STATUS can take the values previously specified.
-            o  QTY specifies the amount of bytes transfered.
+               o  QTY specifies the amount of bytes transfered.
 
       6.5   Password spoofing status
 
@@ -272,7 +262,7 @@ STATUS refers to the request status, and its values can be:
 
                +------+-----+
                | TYPE | CMD |
-               +------+-----+ //CAMBIO
+               +------+-----+
                | 0x0  |0x04 |
                +------+-----+
                
@@ -289,8 +279,8 @@ STATUS refers to the request status, and its values can be:
             +----------+------------+
 
             Where SPOOFING refers to the state of password spoofing over POP3:
-               0x00 means that spoofing is turned OFF.
-               0x01 means that spoofing is turned ON.
+               o  0x00 means that spoofing is turned OFF.
+               o  0x01 means that spoofing is turned ON.
 
       6.6   Authentication status   
 
@@ -298,7 +288,7 @@ STATUS refers to the request status, and its values can be:
 
             +------+-----+
             | TYPE | CMD |
-            +------+-----+ //CAMBIO
+            +------+-----+
             | 0x0  |0x05 |
             +------+-----+
             
@@ -315,100 +305,8 @@ STATUS refers to the request status, and its values can be:
             +----------+------------+
 
             Where AUTH refers to the state of authentication in the server:
-               0x00 means that authentication is turned OFF.
-               0x01 means that authentication is turned ON.
-      
-      6.?   Current status of the password director  //// VUELA ?????? WTF IS THIS NO ESTA NI DEFINIDO ARRIBA
-
-         Request: 
-
-            +------+-----+
-            | TYPE | CMD |
-            +------+-----+ //CAMBIO
-            | 0x0  |0x04 |
-            +------+-----+
-
-         CMD value is 0x04. Command used to get the status of the password director over the server (over POP3 protocol).
-
-         Response: ///// VUELA ?????????????? WTF ES ESTA RESPONSE ?????????????
-
-            The current status of the password disector over the server (over POP3 protocol) returns content within the following structure:
-
-                     +----------+---------------+
-                     |  STATUS  |    SPOOFING   |
-                     +----------+---------------+
-                     |    1     |       1       |
-                     +----------+---------------+
-
-            o  STATUS can take the values previously specified.
-            o  SPOOFING field: 
-               0x00 means that spoofing is turned OFF.
-               0x01 means that spoofing is turned ON.
-
-               o  0x00 to get the list of users
-
-      6.7   Bytes transfered from a user  TODO: ESTO NO SE SI ES MEDIO UNA FLASHEADA  VUELA ??????
-
-         Request:
-
-            CMD value is 0x05. Command used to get amount of bytes transfered by a specific user, the request adds to the 
-            base structure the following fields.
-
-                        +------+-----+------+----------+
-                        | TYPE | CMD | ULEN |  UNAME   |
-                        +------+-----+-----------------|
-                        | 0x0  |0x06 |  1   | 1 to 255 |
-                        +------+-----+------+----------+
-            In which:
-                  o The ULEN field contains the length of the UNAME field that follows.
-                  o The UNAME field contains the username as known to the source operating system.
-            
-            It is relevant to state that only users with admin priviledges are allowed to use this request.
-
-         Response:
-
-            The amount of bytes transfered by a specific user returns content within the following structure:
-            
-                     +----------+-------+------+----------+
-                     |  STATUS  |  QTY  | ULEN |  UNAME   |
-                     +----------+-------+------+----------+
-                     |    1     |   8   |  1   | 1 to 255 |
-                     +----------+-------+------+----------+
-            
-            o  STATUS can take the values previously specified.
-            o  QTY specifies the amount of bytes transfered.                             
-            o  The ULEN field contains the length of the UNAME field that follows.
-            o  The UNAME field contains the username related to the request.   
-
-      6.8   Access to the logs of the server
-
-         Request:
-
-            +------+-----+
-            | TYPE | CMD |
-            +------+-----+ //CAMBIO
-            | 0x0  |0x07 |
-            +------+-----+
-
-
-            CMD value 0x06. Command used to access the logs over the server.
-            It is relevant to state that only users with admin priviledges are allowed to use this request.
-
-         Response:
-
-            TODO: ESTO NO SE MUY BIEN SI TA BIEN (PROBABLEMENTE NO)
-   
-            Te logs from the user request returns content within the following structure:
-
-                  +----------+-------------+-------------+
-                  |  STATUS  |    QARGS    |     ARGS    |
-                  +----------+-------------+-------------+
-                  |    1     |      1      |   Variable  |
-                  +----------+-------------+-------------+
-
-            o  TYPE and CMD and STATUS are the values previously specified.
-            o  QARGS refers to the amount of parameters to be parsed.
-            o  ARGS are the arguments itself (the logs).
+               o  0x00 means that authentication is turned OFF.
+               o  0x01 means that authentication is turned ON.
 
 
 7.  Alterations Commands
@@ -445,7 +343,7 @@ STATUS refers to the request status, and its values can be:
 
                      +------+-----+------+----------+
                      | TYPE | CMD | ULEN |  UNAME   |
-                     +------+-----+------+----------+ //CAMBIO VUELA PWD ACA SOLO SE CONECTAN ADMINS
+                     +------+-----+------+----------+
                      | 0x01 |0x01 |  1   | 1 to 255 |
                      +------+-----+------+----------+
 
@@ -527,11 +425,11 @@ STATUS refers to the request status, and its values can be:
 
             Request: 
                
-                     +--------+-------+---------------+
-                     |  TYPE  |  CMD  |     AUTH      |
-                     +--------+-------+---------------+
-                     |  0x01  | 0x05  |       1       |
-                     +--------+-------+---------------+
+                     +--------+-------+------------+
+                     |  TYPE  |  CMD  |    AUTH    |
+                     +--------+-------+------------+
+                     |  0x01  | 0x05  |     1      |
+                     +--------+-------+------------+
 
                AUTH field values:
                   0x00 to turn authentication OFF
