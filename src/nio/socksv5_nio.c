@@ -17,11 +17,14 @@
 #include "../include/request_parser.h"
 #include "buffer.h"
 
-#include "stm.h"
+#include "../include/stm.h"
 #include "../include/socksv5_nio.h"
 #include"../include/netutils.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
+static const unsigned max_pool = 50;
+static unsigned pool_size = 0;
+static struct socks5 * pool = 0;
 
 /** maquina de estados general */
 enum socks_v5state {
@@ -76,10 +79,10 @@ struct request_st {
     /** buffer utilizado para I/O */
     buffer               *rb, *wb;
 
-    struct request          request;
+    struct socks5_request   request;
     struct request_parser   parser;
 
-    enum socks_response_status status;
+    enum socks5_response_status status;
 
     struct sockaddr_storage     *origin_addr;
     socklen_t                   *origin_addr_len;
@@ -90,17 +93,35 @@ struct request_st {
 } ;
 
 //------------------------------------------------------------
+struct copy{
 
-static const unsigned max_pool = 50;
-static unsigned pool_size = 0;
-static struct socks5 * pool = 0;
+    int *fd;
+    fd_interest duplex;
+    buffer               *rb, *wb;
+    struct copy *other; 
+};
+struct connecting{
+     buffer *wb;
+    const int *client_fd;
+    int *origin_fd;
+    enum socks5_response_status *status;
+};
+
+//------------------------------------------------------------
 
 //--------------------FUNCTION DEFINITIONS------------------
 static void hello_read_init(const unsigned state, struct selector_key *key);
 static void hello_read_close(const unsigned state, struct selector_key *key);
 static unsigned hello_read(struct selector_key *key);
+static unsigned request_connect (struct selector_key *key, struct request_st *d);
+static unsigned hello_write(struct selector_key *key);
+static unsigned request_read (struct selector_key *key);
+static void request_init(const unsigned state, struct selector_key *key);
+static unsigned request_resolv_done(struct selector_key *key);
+static void request_connecting_init(const unsigned state, struct selector_key *key);
+static unsigned request_connecting(struct selector_key *key);
 //---------------------------------------------------------------
-static const struct state_definition * socks5_describe_states(void);
+// static const struct state_definition * socks5_describe_states(void);
 
 
 /** definicionn de handlers para cada estado */
@@ -111,6 +132,40 @@ static const struct state_definition client_statbl[] = {
         .on_departure     = hello_read_close,
         .on_read_ready    = hello_read,
     },
+    {
+        .state            = HELLO_WRITE,
+        .on_write_ready   = hello_write,
+    },
+    {
+        .state            = REQUEST_READ,
+        .on_arrival       = request_init,
+        .on_read_ready     = request_read,
+    },
+    {
+        .state            = REQUEST_RESOLV,
+        .on_write_ready   = request_resolv_done,
+    },
+    {
+        .state            = REQUEST_CONNECTING,
+        .on_arrival       = request_connecting_init,
+        .on_write_ready   =request_connecting,
+    },
+    {
+        .state          = REQUEST_WRITE,
+        //TODO: FUNCION DE REQUEST WRITE
+
+    },
+    {
+        .state =COPY,
+        //TODO: FUNCIONES DE COPY
+    },
+    {
+        .state=DONE
+    },
+    {
+        .state=ERROR
+    }
+    
 };
 struct socks5 {
 
@@ -249,7 +304,9 @@ static struct socks5 *socks5_new(int client_fd) {
         ret->next = 0;
     }
     if(ret == NULL) {
-        return NULL; //TODO error message?
+        error_message="failed to create socks";
+        printf("%s\n",error_message);//TODO: ERROR HANDLER
+        return NULL; //TODO: error message?
     }
     
     memset(ret, 0x00, sizeof(*ret));
@@ -260,7 +317,7 @@ static struct socks5 *socks5_new(int client_fd) {
 
     ret->stm.initial=HELLO_READ;
     ret->stm.max_state=ERROR;
-    ret->stm.states=socks5_describe_states();
+    ret->stm.states=client_statbl;
     stm_init(&ret->stm);   
 
     buffer_init(&ret->read_buffer, N(ret->raw_buff_a), ret->raw_buff_a);
@@ -356,6 +413,7 @@ socksv5_passive_accept(struct selector_key *key) {
         // tal vez deberiamos apagar accept() hasta que detectemos
         // que se liberÃ³ alguna conexiÃ³n.
         error_message = "Socks5 Passive: new socks5 connection failed";
+        printf("%s\n",error_message);//TODO: ERROR HANDLER
         goto fail;
     }
 
@@ -365,8 +423,10 @@ socksv5_passive_accept(struct selector_key *key) {
 
 
     ss = selector_register(key->s, client, &socks5_handler, OP_READ, state);
-    if(SELECTOR_SUCCESS != ) {
+    if(SELECTOR_SUCCESS != ss) {
         error_message = "Socks5 Passive: selector error register";
+        printf("%s\n",error_message);//TODO: ERROR HANDLER
+
         goto fail;
     }
 
@@ -406,21 +466,19 @@ static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t *selected  = p->data;
 
-    if(SOCKS_HELLO_NOAUTHENTICATION_REQUIRED == method) {
+    if((METHOD_NO_AUTH_REQ == method)||(METHOD_AUTH_REQ == method)) {
        *selected = method;
     }
 }
 
 /** inicializa las variables de los estados HELLO_â€¦ */
-static void
-hello_read_init(const unsigned state, struct selector_key *key) {
+static void hello_read_init(const unsigned state, struct selector_key *key) {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
 
     d->rb                              = &(ATTACHMENT(key)->read_buffer);
     d->wb                              = &(ATTACHMENT(key)->write_buffer);
     d->parser.data                     = &d->method;
-    d->parser.on_authentication_method = on_hello_method, hello_parser_init(
-            &d->parser);
+    d->parser.on_auth_method = on_hello_method, hello_parser_init(&d->parser);
 }
 
 static unsigned
@@ -440,8 +498,8 @@ hello_read(struct selector_key *key) {
     n = recv(key->fd, ptr, count, 0);
     if(n > 0) {
         buffer_write_adv(d->rb, n);
-        const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if(hello_is_done(st, 0)) {
+        const enum hello_parser_state st = hello_parser_consume(d->rb, &d->parser, &error);
+        if(hello_parser_is_done(st, 0)) {
             if(SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
                 ret = hello_process(d);
             } else {
@@ -461,11 +519,11 @@ hello_process(const struct hello_st* d) {
     unsigned ret = HELLO_WRITE;
 
     uint8_t m = d->method;
-    const uint8_t r = (m == SOCKS_HELLO_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
-    if (-1 == hello_marshall(d->wb, r)) {
+    const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
+    if (-1 == hello_parser_marshal(d->wb, r)) {
         ret  = ERROR;
     }
-    if (SOCKS_HELLO_NO_ACCEPTABLE_METHODS == m) {
+    if (METHOD_NO_ACCEPTABLE_METHODS == m) {
         ret  = ERROR;
     }
     return ret;
@@ -501,7 +559,7 @@ hello_write(struct selector_key *key)
         {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ))
             {
-                if(d->method == METHOD_USERNAME_PASSWORD){
+                if(d->method == METHOD_AUTH_REQ){
                     ret = AUTH_READ;
                 }
                 else{
@@ -654,10 +712,10 @@ request_resolv_blocking(void * data) {
 static unsigned 
 request_resolv_done(struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
-    struct socks5 *s = ATTACHMENT(KEY);
+    struct socks5 *s = ATTACHMENT(key);
 
     if(s->origin_resolution == 0) {
-        d->status = status_general_SOCKS_server_failure;
+        d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     } else {
         s->origin_domain = s->origin_resolution->ai_family;
         s->origin_addr_len = s->origin_resolution->ai_addrlen;
@@ -678,7 +736,7 @@ request_init(const unsigned state, struct selector_key *key) {
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
     d->parser.request = &d->request;
-    d->status = status_general_SOCKS_server_failure;
+    d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     request_parser_init(&d->parser);
     d->client_fd = &ATTACHMENT(key)->client_fd;
     d->origin_fd = &ATTACHMENT(key)->origin_fd;
@@ -691,23 +749,23 @@ request_init(const unsigned state, struct selector_key *key) {
 static unsigned
 request_process (struct selector_key* key, struct request_st* d) {
     unsigned ret;
-    pthread_ t tid;
+    pthread_t tid;
 
     switch (d->request.cmd) {
-        case socks_req_cmd_connect:
+        case SOCKS5_REQ_CMD_CONNECT:
             // esto mejoraría enormemente de haber usado
             // sockaddr_sto rage en el request
             
             switch (d->request.dest_addr_type) {
-                case socks_req_addrtype_ipv4: {
+                case SOCKS5_REQ_ADDRTYPE_IPV4: {
                     ATTACHMENT (key)->origin_domain = AF_INET;
                     d->request.dest_addr.ipv4.sin_port = d->request.dest_port;
                     ATTACHMENT (key)->origin_addr_len = sizeof (d->request.dest_addr.ipv4);
-                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr, sizeof (drequest.dest_addr.ipv4));
+                    memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr, sizeof (d->request.dest_addr.ipv4));
                     ret = request_connect(key , d);
                     break;
 
-                } case socks_req_addrtype_ipv6: {
+                } case SOCKS5_REQ_ADDRTYPE_IPV6: {
                     ATTACHMENT (key)->origin_domain = AF_INET6;
                     d->request.dest_addr.ipv6.sin6_port = d->request.dest_port;
                     ATTACHMENT (key) ->origin_addr_len = sizeof(d->request.dest_addr.ipv6);
@@ -715,20 +773,20 @@ request_process (struct selector_key* key, struct request_st* d) {
                     ret = request_connect(key , d);
                     break;
 
-                } case socks_req_addrtype_domain: {
+                } case SOCKS5_REQ_ADDRTYPE_DOMAIN: {
                     // OBS: la resolucion de nombres es bloqueante
                     // no la podemos acceder aca mismo
                     // por lo que habra que hacer un hilo
                     struct selector_key* k = malloc(sizeof(*key));
                     if (k == NULL) {
                         ret = REQUEST_WRITE;
-                        d->status = status_general_SOCKS_server_failure;
+                        d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
                         selector_set_interest_key(key, OP_WRITE);
                     } else {
                         memcpy(k, key, sizeof(*k));
                         if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
                             ret = REQUEST_WRITE;
-                            d->status = status_general_SOCKS_server_failure;
+                            d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
                             selector_set_interest_key(key, OP_WRITE);
                         } else {
                             ret = REQUEST_RESOLV;
@@ -740,15 +798,15 @@ request_process (struct selector_key* key, struct request_st* d) {
 
                 } default: {
                     ret = REQUEST_WRITE;
-                    d->status = status_address_type_not_supported;
+                    d->status = SOCKS5_STATUS_ADDRTYPE_NOT_SUPPORTED;
                     selector_set_interest_key(key, OP_WRITE);
                 }
             }
             break;
-        case socks_req_cmd_bind:
-        case socks_req_cmd_associate:
+        case SOCKS5_REQ_CMD_BIND:
+        case SOCKS5_REQ_CMD_ASSOCIATE:
         default:
-            d->status = status_command_not_supported;
+            d->status = SOCKS5_STATUS_CMD_NOT_SUPPORTED;
             ret = REQUEST_WRITE;
             break;
     }
@@ -771,8 +829,8 @@ request_read (struct selector_key *key) {
     n = recv(key->fd, ptr, count, 0);
     if (n > 0) {
         buffer_write_adv(b, n);
-        int st = request_consume(b, &d->parser, &error);
-        if (request_is_done(st, 0)) {
+        int st = request_parser_consume(b, &d->parser, &error);
+        if (request_parser_is_done(st, 0)) {
             ret = request_process(key, d);
         }
     } else {
@@ -782,12 +840,12 @@ request_read (struct selector_key *key) {
     return error ? ERROR : ret;
 }
 
-static void
-request_read_close(const unsigned state, struct selector_key *key) {
-    struct request_st * d = &ATTACHMENT(key)->client.request;
+// static void
+// request_read_close(const unsigned state, struct selector_key *key) {
+//     struct request_st * d = &ATTACHMENT(key)->client.request;
 
-    request_close(&d->parser);
-}
+//     request_parser_close(&d->parser);
+// }
 
 
 static void 
@@ -802,14 +860,16 @@ request_connecting_init(const unsigned state, struct selector_key *key) {
 
 /** intenta establecer una conexión con el origin server */
 static unsigned
-request_connect (struct selector key *key, struct request_st *d) {
+request_connect (struct selector_key *key, struct request_st *d) {
     bool error = false;
     // da legibilidad
-    enum socks_response_status status   = d->status;
+    enum socks5_response_status status   = d->status;
     int *fd                             = d->origin_fd;
 
+    //TODO: QUE HACER SI FD ES UN VALOR NO DESEADO
+
     // Creo el socket
-    *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0):
+    *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0);
     if (*fd == -1) {
         error = true;
         goto finally;
@@ -838,7 +898,7 @@ request_connect (struct selector key *key, struct request_st *d) {
             }
             ATTACHMENT(key)->references += 1;
         } else {
-            status = errno_to_socks(errno);
+            // status = errno_to_socks(errno); TODO: QUE ES ESTO
             error = true;
             goto finally;
         }
@@ -870,21 +930,22 @@ request_connecting(struct selector_key *key) {
     struct connecting *d = &ATTACHMENT(key)->orig.conn;
 
     if (getsockopt (key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-        *d->status = status_general_SOCKS_server_failure;
+        *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     }
     else {
         if(error == 0) {
-            *d->status = status_succeeded;
+            *d->status = SOCKS5_STATUS_SUCCEED;
             *d->origin_fd = key->fd;
         } else{
-            *d->status = errno_to_socks (error)
+            //*d->status = errno_to_socks (error) //TODO: ERROR HANDLER
+
         }
     }
     
-    if(-1 == request_marshall(d->wb, *d->status)) {
-        *d->status = status_general_SOCKS_server_failure;
-        abort(); // el buffer tiene que ser mas grande en la variable
-    } 
+    // if(-1 == request_marshall(d->wb, *d->status)) {
+    //     *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+    //     abort(); // el buffer tiene que ser mas grande en la variable
+    // } 
     selector_status s = 0;
     s |= selector_set_interest      (key->s, *d->client_fd, OP_WRITE);
     s |= selector_set_interest_key  (key, OP_NOOP);

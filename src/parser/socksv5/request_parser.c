@@ -220,3 +220,11 @@ char * request_parser_error_report(request_state state){
     }
         
 }
+void request_parser_close(struct request_parser *p){
+    //TODO: MANEJAR ESTO 
+}
+
+extern int request_marshall(buffer *b, const enum socks5_response_status status, const enum socks5_addr_type addr_type,const union socks5_addr addr, const in_port_t dest_port ){
+    //TODO: REVISAR ESTA FUNCION
+    return 1;
+}

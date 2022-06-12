@@ -84,6 +84,10 @@ enum request_state request_parser_consume(buffer *b, request_parser *p, bool *er
 
 bool request_parser_is_done(enum request_state state, bool *errored);
 
+void request_parser_close(struct request_parser *p);
+
 char * request_parser_error_report(enum request_state state);
+
+extern int request_marshall(buffer *b, const enum socks5_response_status status, const enum socks5_addr_type addr_type,const union socks5_addr addr, const in_port_t dest_port );
 
 #endif
