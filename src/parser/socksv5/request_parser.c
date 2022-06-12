@@ -2,7 +2,7 @@
 #include <arpa/inet.h>
 #include "request_parser.h"
 #include "socks_utils.h"
-#include <ernno.h>
+#include <errno.h>
 
 
 // TODO: mejorar estilo del codigo USAR TABLA DE FUNCIONES, TODOS LOS PARSERS
@@ -262,7 +262,7 @@ enum socks5_response_status errno_to_socks(int e) {
     return ret;
 }
 
-enum socks5_response_status cmd_resolve(struct request *request, struct sockaddr **originaddr, socklen_t *originlen, int *domain) {
+enum socks5_response_status cmd_resolve(struct socks5_request *request, struct sockaddr **originaddr, socklen_t *originlen, int *domain) {
     enum socks5_response_status ret = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
 
     *domain = AF_INET;

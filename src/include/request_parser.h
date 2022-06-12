@@ -93,6 +93,6 @@ extern int request_marshall(buffer *b, const enum socks5_response_status status)
 
 enum socks5_response_status errno_to_socks(int e);
 
-enum socks5_response_status cmd_resolve(struct request * request, struct sockaddr **originaddr, socklen_t *originlen, int * domain);
+enum socks5_response_status cmd_resolve(struct socks5_request * request, struct sockaddr **originaddr, socklen_t *originlen, int * domain);
 
 #endif
