@@ -15,12 +15,13 @@
 
 #include "../include/hello_parser.h"
 #include "../include/request_parser.h"
+
 #include "buffer.h"
 
 #include "../include/stm.h"
 #include "../include/socksv5_nio.h"
-#include"../include/netutils.h"
-
+#include "../include/netutils.h"
+#include "stm.h"
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
