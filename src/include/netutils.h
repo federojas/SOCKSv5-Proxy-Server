@@ -4,14 +4,26 @@
 #include <netinet/in.h>
 
 #include "buffer.h"
-typedef int ip_type;
-// typedef struct address_data {
-//     ip_type type;
-//     in_port_t port;
-//     socklen_t addr_len;
-//     address_storage addr;
-//     int domain;
-// } address_data;
+
+typedef enum addr_type {
+    ADDR_IPV4,
+    ADDR_IPV6,
+    ADDR_DOMAIN,
+} addr_type;
+
+typedef union addr_storage {
+    char fqdn[0xFF];
+    struct sockaddr_storage address_storage;
+} addr_storage;
+
+//preload port before getting address representation
+typedef struct address_data {
+    addr_type addr_type;
+    in_port_t port;
+    socklen_t addr_len;
+    addr_storage addr_storage;
+    int domain;
+} address_data;
 
 #define SOCKADDR_TO_HUMAN_MIN (INET6_ADDRSTRLEN + 5 + 1)
 /**

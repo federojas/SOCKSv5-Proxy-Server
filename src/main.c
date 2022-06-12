@@ -17,6 +17,7 @@
 #define DEST_PORT 8888
 #define MAX_PENDING_CONN 20
 #define MAX_ADDR_BUFFER 128
+
 static bool done = false;
 // static char addrBuffer[MAX_ADDR_BUFFER];
 
@@ -172,8 +173,7 @@ int main(const int argc, const char **argv) {
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server, &socksv5,
-                                              OP_READ, NULL);
+    ss = selector_register(selector, server, &socksv5, OP_READ, NULL);
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
         goto finally;
@@ -206,6 +206,8 @@ finally:
         selector_destroy(selector);
     }
     selector_close();
+
+    //cerrar los proxy socks
 
     socksv5_pool_destroy();
 
