@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "buffer.h"
+#include "logger.h"
 
 static const int IPV4_LENGTH = 4;
 static const int IPV6_LENGTH = 16;
@@ -81,7 +82,7 @@ void request_parser_init(request_parser *p);
 
 enum request_state request_parser_feed(request_parser *p, uint8_t byte);
 
-enum request_state request_parser_consume(buffer *b, request_parser *p, bool *errored);
+bool request_parser_consume(buffer *b, request_parser *p, bool *errored);
 
 bool request_parser_is_done(enum request_state state, bool *errored);
 

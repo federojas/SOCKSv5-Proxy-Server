@@ -166,8 +166,6 @@ int main(const int argc, const char **argv) {
         goto finally;
     }
 
-    // probablemente aca me falta guardar la tarea bloqueante 
-    // del getaddrinfo
     const struct fd_handler socksv5 = {
         .handle_read       = socksv5_passive_accept,
         .handle_write      = NULL,

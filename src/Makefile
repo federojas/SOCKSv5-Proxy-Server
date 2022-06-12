@@ -15,7 +15,7 @@ all: ${OBJECTS}
 	$(CC) $(CFLAGS) -o server main.c $(OBJECTS)
 
 clean:
-	rm -r -f *.o ./parsers/*.o ./parsers/socksv5/*.o ./net_utils/*.o ./buffer/*.o ./nio/*.o ./selector/*.o ./smt/*.o server $(COMMON);
+	rm -r -f *.o ./parsers/*.o ./parsers/socksv5/*.o ./net_utils/*.o ./buffer/*.o ./nio/*.o ./selector/*.o ./stm/*.o server $(COMMON);
 
 main: main.c
 

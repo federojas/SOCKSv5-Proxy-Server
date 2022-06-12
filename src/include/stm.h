@@ -37,7 +37,7 @@ struct state_machine {
 };
 
 //TODO hay que volar esta linea (40)
-struct selector_key *key;
+extern struct selector_key *key;
 
 /**
  * definición de un estado de la máquina de estados

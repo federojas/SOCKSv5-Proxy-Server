@@ -8,7 +8,7 @@
 //     p->data = data;
 //     p->methods_remaining = 0;
 // }
-//TODO: CHECKEAR ESTO
+
 void hello_parser_init(hello_parser *p){
     p->current_state=HELLO_VERSION;
     p->methods_remaining=0;
@@ -59,7 +59,7 @@ bool hello_parser_consume(buffer *b, hello_parser *p, bool *errored) {
 
     while(!hello_parser_is_done(p->current_state, errored) && buffer_can_read(b)) {
         byte = buffer_read(b);
-        hello_parser_feed(p, byte); 
+        p->current_state = hello_parser_feed(p, byte); 
     }
 
     return hello_parser_is_done(p->current_state, errored);
@@ -93,7 +93,7 @@ char * hello_parser_error_report(enum hello_parser_state state) {
     }
 }
 
-char hello_parser_marshal(buffer *b, const uint8_t method){
+char hello_parser_marshall(buffer *b, const uint8_t method){
     size_t n;
     uint8_t *buff=buffer_write_ptr(b,&n);
     if(n<2){

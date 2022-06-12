@@ -76,7 +76,6 @@ static request_state dstaddr_fqdn(request_parser *p, const uint8_t c) {
 
 static request_state dstaddr(request_parser *p, const uint8_t c) {
     request_state next_state;
-    p->request->dest_addr_type = c;
     switch(p->request->dest_addr_type) {
         case SOCKS5_REQ_ADDRTYPE_IPV4:
             p->request->dest_addr.ipv4.sin_addr.s_addr = (p->request->dest_addr.ipv4.sin_addr.s_addr << 8) + c;
@@ -125,48 +124,49 @@ void request_parser_init(request_parser *p) {
 }
 
 request_state request_parser_feed(request_parser *p, uint8_t byte) {
-    request_state next;
+    
     switch (p->current_state)
     {
         case REQUEST_VERSION:
-            next = version(p,byte);
+            p->current_state = version(p,byte);
             break;
         case REQUEST_CMD:
-            next = cmd(p,byte);
+            p->current_state = cmd(p,byte);
             break;
         case REQUEST_RSV:
-            next = REQUEST_ATYP;
+            p->current_state = REQUEST_ATYP;
             break;
         case REQUEST_ATYP:
-            next = atyp(p,byte);
+            p->current_state = atyp(p,byte);
             break;
         case REQUEST_DSTADDR_FQDN:
-            next = dstaddr_fqdn(p,byte);
+            p->current_state = dstaddr_fqdn(p,byte);
             break;
         case REQUEST_DSTADDR:
-            next = dstaddr(p,byte);
+            p->current_state = dstaddr(p,byte);
             break;
         case REQUEST_DSTPORT:
-            next = dstport(p,byte);
+            p->current_state = dstport(p,byte);
             break;
         case REQUEST_DONE:
-            next = p->current_state;
+            break;
+        case REQUEST_TRAP:
             break;
         default:
-            next = REQUEST_TRAP;
-            break;
+            abort();
+        break;
     }
-
-    return p->current_state = next;
+    
+    return p->current_state;
 }
 
 
-request_state request_parser_consume(buffer *b, request_parser *p, bool *errored) {
+bool request_parser_consume(buffer *b, request_parser *p, bool *errored) {
 
     uint8_t byte;
     while(!request_parser_is_done(p->current_state, errored) && buffer_can_read(b)) {
         byte = buffer_read(b);
-        request_parser_feed(p, byte); 
+        p->current_state = request_parser_feed(p, byte); 
     }
 
     return request_parser_is_done(p->current_state, errored);
@@ -236,8 +236,24 @@ void request_parser_close(struct request_parser *p) {
 }
 
 extern int request_marshall(buffer *b, const enum socks5_response_status status) {
-    //TODO: REVISAR ESTA FUNCION
-    return 1;
+    size_t n;
+    uint8_t *buff=buffer_write_ptr(b,&n);
+    if(n<10) {
+        return -1;
+    }
+    buff[0] = SOCKS5_VERSION;
+    buff[1] = status;
+    buff[2] = 0x00;
+    buff[3] = SOCKS5_REQ_ADDRTYPE_IPV4;
+    buff[4] = 0x00;
+    buff[5] = 0x00;
+    buff[6] = 0x00;
+    buff[7] = 0x00;
+    buff[8] = 0x00;
+    buff[9] = 0x00;
+    
+    buffer_write_adv(b,10);
+    return 10;
 }
 
 enum socks5_response_status errno_to_socks(int e) {

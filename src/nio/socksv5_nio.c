@@ -10,18 +10,15 @@
 #include <unistd.h>  // close
 #include <pthread.h>
 #include <netdb.h>
-
 #include <arpa/inet.h>
-
 #include "hello_parser.h"
 #include "request_parser.h"
-
 #include "buffer.h"
-
 #include "stm.h"
 #include "socksv5_nio.h"
 #include "netutils.h"
 #include "stm.h"
+
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
@@ -29,30 +26,7 @@ static struct socks5 * pool = 0;
 
 /** maquina de estados general */
 enum socks_v5state {
-    /**
-     * recibe el mensaje `hello` del cliente, y lo procesa
-     *
-     * Intereses:
-     *     - OP_READ sobre client_fd
-     *
-     * Transiciones:
-     *   - HELLO_READ  mientras el mensaje no estÃ© completo
-     *   - HELLO_WRITE cuando estÃ¡ completo
-     *   - ERROR       ante cualquier error (IO/parseo)
-     */
     HELLO_READ,
-
-    /**
-     * envÃ­a la respuesta del `hello' al cliente.
-     *
-     * Intereses:
-     *     - OP_WRITE sobre client_fd
-     *
-     * Transiciones:
-     *   - HELLO_WRITE  mientras queden bytes por enviar
-     *   - REQUEST_READ cuando se enviaron todos los bytes
-     *   - ERROR        ante cualquier error (IO/parseo)
-     */
     HELLO_WRITE,
     AUTH_READ,
     AUTH_WRITE,
@@ -95,7 +69,6 @@ struct request_st {
 
 //------------------------------------------------------------
 struct copy{
-
     int *fd;
     fd_interest duplex;
     buffer               *rb, *wb;
@@ -113,17 +86,21 @@ struct connecting{
 //--------------------FUNCTION DEFINITIONS------------------
 static void hello_read_init(const unsigned state, struct selector_key *key);
 static void hello_read_close(const unsigned state, struct selector_key *key);
+static unsigned hello_process(const struct hello_st* d);
 static unsigned hello_read(struct selector_key *key);
 static unsigned request_connect (struct selector_key *key, struct request_st *d);
 static unsigned hello_write(struct selector_key *key);
-static unsigned request_read (struct selector_key *key);
 static void request_init(const unsigned state, struct selector_key *key);
+static unsigned request_read (struct selector_key *key);
 static unsigned request_resolv_done(struct selector_key *key);
 static void request_connecting_init(const unsigned state, struct selector_key *key);
 static unsigned request_connecting(struct selector_key *key);
+static unsigned request_write(struct selector_key *key);
+static void copy_init(const unsigned state, struct selector_key *key);
+static unsigned copy_read(struct selector_key *key);
+static unsigned copy_write(struct selector_key *key);
+static struct copy *fd_copy(struct selector_key *key);
 //---------------------------------------------------------------
-// static const struct state_definition * socks5_describe_states(void);
-
 
 /** definicionn de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
@@ -147,24 +124,26 @@ static const struct state_definition client_statbl[] = {
         .state            = REQUEST_READ,
         .on_arrival       = request_init,
         .on_read_ready     = request_read,
+        // request_close ? 
     },
     {
         .state            = REQUEST_RESOLV,
-        .on_write_ready   = request_resolv_done,
+        .on_block_ready   = request_resolv_done,
     },
     {
         .state            = REQUEST_CONNECTING,
         .on_arrival       = request_connecting_init,
-        .on_write_ready   =request_connecting,
+        .on_write_ready   = request_connecting,
     },
     {
         .state          = REQUEST_WRITE,
-        //TODO: FUNCION DE REQUEST WRITE
-
+        .on_write_ready = request_write,
     },
     {
-        .state =COPY,
-        //TODO: FUNCIONES DE COPY
+        .state = COPY,
+        .on_arrival = copy_init,
+        .on_read_ready = copy_read,
+        .on_write_ready = copy_write,
     },
     {
         .state=DONE
@@ -216,28 +195,6 @@ struct socks5 {
 
     struct socks5 *next;
 };
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////
-// DefiniciÃ³n de variables para cada estado
-
-/** usado por HELLO_READ, HELLO_WRITE */
-
-
-
-
-/*
- * Si bien cada estado tiene su propio struct que le da un alcance
- * acotado, disponemos de la siguiente estructura para hacer una Ãºnica
- * alocaciÃ³n cuando recibimos la conexiÃ³n.
- *
- * Se utiliza un contador de referencias (references) para saber cuando debemos
- * liberarlo finalmente, y un pool para reusar alocaciones previas.
- */
 
 
 /** realmente destruye */
@@ -401,7 +358,6 @@ socksv5_passive_accept(struct selector_key *key) {
 
 
     // Wait for a client to connect 
-    // TODO: aca me puedo bloquear?
     const int client = accept(key->fd, (struct sockaddr*) &client_addr,
                                                           &client_addr_len);
     if(client == -1) {
@@ -447,28 +403,9 @@ fail:
     socks5_destroy(state);
 }
 
-//TODO SANDRINI TRANPSARENTE
-
-//     // Como soy un tcp transparente, debo abrir un socket activo con el destino final
-//     // y pasarle todo
-//     // aca estoy hardcodeando una direccion cualquiera cuando en realidad
-//     // deberia registrar una tarea bloqueante (getaddrinfo) que me 
-//     // averigue la addrinfo del destino
-//     int destSocketFd = socket(AF_INET, SOCK_STREAM, 0);
-//     struct sockaddr_in serSockAddr = {.sin_family = AF_INET,
-//         .sin_addr.s_addr = inet_addr("127.0.0.1"),
-//         .sin_port = htons(DEST_PORT)};
-
-//     //TODO: el connect es bloqueante, para solucionar esto tendria que 
-//     // registrarlo como escritura
-//     connect(destSocketFd, (struct sockaddr *) &serSockAddr, sizeof(serSockAddr));
-//     // esta linea va?
-//    // selector_register(key->s, destSocketFd, &activeSocketHandler, OP_WRITE, key->data);
-// }
-
-//////////// HELLO //////////
 
 /** callback del parser utilizado en `read_hello' */
+/*
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t *selected  = p->data;
@@ -477,6 +414,7 @@ on_hello_method(struct hello_parser *p, const uint8_t method) {
        *selected = method;
     }
 }
+*/
 
 /** inicializa las variables de los estados HELLO_â€¦ */
 static void hello_read_init(const unsigned state, struct selector_key *key) {
@@ -484,29 +422,28 @@ static void hello_read_init(const unsigned state, struct selector_key *key) {
 
     d->rb                              = &(ATTACHMENT(key)->read_buffer);
     d->wb                              = &(ATTACHMENT(key)->write_buffer);
-    d->parser.data                     = &d->method;
-    d->parser.on_auth_method = on_hello_method, hello_parser_init(&d->parser);
-}
+    hello_parser_init(&d->parser);
 
-static unsigned
-hello_process(const struct hello_st* d);
+    d->parser.data                     = &d->method;
+    // TODO: agregar on auth method
+    d->parser.on_auth_method = NULL;
+}
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
 static unsigned
 hello_read(struct selector_key *key) {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    unsigned  ret      = HELLO_READ;
-        bool  error    = false;
-     uint8_t *ptr;
-      size_t  count;
-     ssize_t  n;
+    unsigned ret = HELLO_READ;
+    bool error = false;
+    uint8_t *ptr;
+    size_t  count;
+    ssize_t  n;
 
     ptr = buffer_write_ptr(d->rb, &count);
     n = recv(key->fd, ptr, count, 0);
     if(n > 0) {
         buffer_write_adv(d->rb, n);
-        const enum hello_parser_state st = hello_parser_consume(d->rb, &d->parser, &error);
-        if(hello_parser_is_done(st, 0)) {
+        if(hello_parser_consume(d->rb, &d->parser, &error)) {
             if(SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
                 ret = hello_process(d);
             } else {
@@ -516,7 +453,6 @@ hello_read(struct selector_key *key) {
     } else {
         ret = ERROR;
     }
-
     return error ? ERROR : ret;
 }
 
@@ -527,7 +463,7 @@ hello_process(const struct hello_st* d) {
 
     uint8_t m = d->method;
     const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
-    if (-1 == hello_parser_marshal(d->wb, r)) {
+    if (-1 == hello_parser_marshall(d->wb, r)) {
         ret  = ERROR;
     }
     if (METHOD_NO_ACCEPTABLE_METHODS == m) {
@@ -583,12 +519,7 @@ hello_write(struct selector_key *key)
     return ret;
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-
 // ////////////////  AUTH  ////////////////
-
 // static void 
 // auth_init(struct selector_key *key)
 // {
@@ -681,8 +612,6 @@ hello_write(struct selector_key *key)
 // }
 
 // ////////////////////////////////////////
-
-
 ////////////////  REQUEST  ////////////////
 
 static void * 
@@ -794,6 +723,7 @@ request_process (struct selector_key* key, struct request_st* d) {
                         if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
                             ret = REQUEST_WRITE;
                             d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+                            // falta liberar la memoria del selector_key k ?
                             selector_set_interest_key(key, OP_WRITE);
                         } else {
                             ret = REQUEST_RESOLV;
@@ -825,7 +755,7 @@ static unsigned
 request_read (struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
     
-    buffer *b       = d->rb;
+    buffer *b = d->rb;
     unsigned ret    = REQUEST_READ;
     bool error      = false;
     uint8_t *ptr;
@@ -836,8 +766,7 @@ request_read (struct selector_key *key) {
     n = recv(key->fd, ptr, count, 0);
     if (n > 0) {
         buffer_write_adv(b, n);
-        int st = request_parser_consume(b, &d->parser, &error);
-        if (request_parser_is_done(st, 0)) {
+        if (request_parser_consume(b, &d->parser, &error)) {
             ret = request_process(key, d);
         }
     } else {
@@ -869,7 +798,6 @@ request_connecting_init(const unsigned state, struct selector_key *key) {
 static unsigned
 request_connect (struct selector_key *key, struct request_st *d) {
     bool error = false;
-    // da legibilidad
     enum socks5_response_status status   = d->status;
     int *fd                             = d->origin_fd;
 
@@ -930,36 +858,159 @@ finally:
 }
 
 // la conexion ha sido establecida (o fallo)
-static unsigned
-request_connecting(struct selector_key *key) {
+static unsigned 
+request_connecting(struct selector_key *key)
+{
     int error;
-    socklen_t len = sizeof (error);
+    socklen_t len = sizeof(error);
     struct connecting *d = &ATTACHMENT(key)->orig.conn;
 
-    if (getsockopt (key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+    if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
         *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-    }
-    else {
-        if(error == 0) {
+    } else {
+        if (error == 0) {
             *d->status = SOCKS5_STATUS_SUCCEED;
             *d->origin_fd = key->fd;
-        } else{
-            //*d->status = errno_to_socks (error) //TODO: ERROR HANDLER
-
+        } else {
+            *d->status = errno_to_socks(error);
         }
     }
-    
-    // if(-1 == request_marshall(d->wb, *d->status)) {
-    //     *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-    //     abort(); // el buffer tiene que ser mas grande en la variable
-    // } 
+
+    if(-1 == request_marshall(d->wb, *d->status)) {
+         *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+         abort(); // el buffer tiene que ser mas grande en la variable
+    } 
+
     selector_status s = 0;
-    s |= selector_set_interest      (key->s, *d->client_fd, OP_WRITE);
+    s |= selector_set_interest      (key->s,*d->client_fd, OP_WRITE);
     s |= selector_set_interest_key  (key, OP_NOOP);
 
     // Mandamos la respuesta al cliente
     return SELECTOR_SUCCESS == s ? REQUEST_WRITE : ERROR;
 }
 
+static unsigned request_write(struct selector_key *key)
+{
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+
+    buffer *b = d->wb;
+    unsigned ret = REQUEST_WRITE;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+    ptr = buffer_read_ptr(b, &count);
+    n = send(key->fd, ptr, count, MSG_NOSIGNAL);
+    if (n == -1)
+    {
+        ret = ERROR;
+    }
+    else
+    {
+        buffer_read_adv(b, n);
+        if (!buffer_can_read(b))
+        {
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ))
+            {
+                ret = COPY;
+            }
+            else
+            {
+                ret = ERROR;
+            }
+        }
+    }
+    return ret;
+}
 
 ////////////////////////////////////////
+////////////// COPY ///////////////////
+// TODO: aca deberiamos sacar todas las estadisticas y sniffear las contraseñas
+
+static struct copy *fd_copy(struct selector_key *key)
+{
+    struct copy *d = &ATTACHMENT(key)->client.copy;
+    return *d->fd == key->fd ? d : d->other;
+}
+
+static void copy_init(const unsigned state, struct selector_key *key)
+{
+    struct copy *d = &ATTACHMENT(key)->client.copy;
+
+    d->fd = &ATTACHMENT(key)->client_fd;
+    d->rb = &ATTACHMENT(key)->read_buffer;
+    d->wb = &ATTACHMENT(key)->write_buffer;
+    d->duplex = OP_READ | OP_WRITE;
+    d->other = &ATTACHMENT(key)->orig.copy;
+
+    d = &ATTACHMENT(key)->orig.copy;
+    d->fd = &ATTACHMENT(key)->origin_fd;
+    d->rb = &ATTACHMENT(key)->write_buffer;
+    d->wb = &ATTACHMENT(key)->read_buffer;
+    d->duplex = OP_READ | OP_WRITE;
+    d->other = &ATTACHMENT(key)->client.copy;
+}
+
+static unsigned copy_read(struct selector_key *key)
+{
+    struct copy *d = fd_copy(key);
+    size_t size;
+    ssize_t n;
+    buffer *b = d->rb;
+    unsigned ret = COPY;
+
+    uint8_t *ptr = buffer_write_ptr(b, &size);
+    n = recv(key->fd, ptr, size, 0);
+    if (n <= 0)
+    {
+        shutdown(*d->fd, SHUT_RD);
+        d->duplex &= ~OP_READ;
+        if (*d->other->fd != -1)
+        {
+            shutdown(*d->other->fd, SHUT_WR);
+            d->other->duplex &= ~OP_WRITE;
+        }
+    }
+    else
+    {
+        buffer_write_adv(b, n);
+    }
+    if (d->duplex == OP_NOOP)
+    {
+        ret = DONE;
+    }
+
+    return ret;
+}
+
+static unsigned copy_write(struct selector_key *key)
+{
+    struct copy *d = fd_copy(key);
+    size_t size;
+    ssize_t n;
+    buffer *b = d->wb;
+    unsigned ret = COPY;
+
+    uint8_t *ptr = buffer_read_ptr(b, &size);
+    n = send(key->fd, ptr, size, MSG_NOSIGNAL);
+    if (n == -1)
+    {
+        shutdown(*d->fd, SHUT_WR);
+        d->duplex &= ~OP_WRITE;
+        if (*d->other->fd != -1)
+        {
+            shutdown(*d->other->fd, SHUT_RD);
+            d->other->duplex &= ~OP_READ;
+        }
+    }
+    else
+    {
+        buffer_read_adv(b, n);
+    }
+
+    if (d->duplex == OP_NOOP)
+    {
+        ret = DONE;
+    }
+
+    return ret;
+}
