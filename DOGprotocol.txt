@@ -1,13 +1,10 @@
-TODO: ACLARAR LO DE LITTLE ENDIAN O BIG ENDIAN EN UNA SECCION ESPECIFICA
-
-                        SOCKS Authentication Protocol 
+                     SOCKSV5 Proxy Administration Protocol 
 
 Status of this Memo
 
-   This document specifies an Internet standards track protocol for the
-   Internet community, and requests discussion and suggestions for
-   improvements.  
-
+   This document specifies a protocol designed for the ITBA univeristy course
+   "Protocolos de comunicacion". Authors and contributors: Federico Gustavo Rojas Pelliccia,
+   Santiago Sandrini, Leonardo Agustin D'Agostino and Roberto Franco Rodriguez Tulasne.  
 
 Acknowledgments
 
@@ -38,21 +35,28 @@ Acknowledgments
       o  Get the historic amount of connections over the server
       o  Get the concurrent connections quantity
       o  Get the quantity of bytes transfered in the server
-      o  Get the status of the password spoofing over the server
-      o  Get the status of the password spoofing over the server
-      o  Get access to the logs of the server
+      o  Get the status of password spoofing over the server
+      o  Get the status of authentication over the server
+
+      o  Get access to the logs of the server //VUELA???? FIJARSE SECCIONES DE ESTO ABAJO
 
    
    The associated CMD values for Alterations request are the following:
       o  Add a user 
       o  Delete a user 
-      o  Set a new password 
-      o  Set a user admin priviledges
+      o  Set a new password  /// VUELA ????????????
+      o  Set a user admin privileges ///// VUELA ????????????
       o  Toggle password spoofing in the server
       o  Toggle authentication in the server
     
+2. Data definitions //CAMBIO
 
-2.  Initial negotiation
+   Big endian order (network order) is to be used in multiple byte fields.
+   Big endian: most-significant-octet-first encoding.
+
+   All data packet field size unit is byte/s unless otherwise specified.
+
+3.  Initial negotiation
     
    The client establishes a TCP connection with the server.
    
@@ -90,181 +94,311 @@ Acknowledgments
    In case of failure, the server returns a 'failure' (any STATUS value different than 0x00)
    status, it MUST close the connection.
    
-   In case of succesfull connection (STATUS value 0x00), the session is established.
+In case of succesfull connection (STATUS value 0x00), the session is established.
 
+4.  General request structure
 
-3.  GET Commands
-                     +------+-----+
-                     | TYPE | CMD |
-                     +------+-----+
-                     
-                     +------+-----+
+Once the client is authenticated (the session with the server is established).
+All client request MUST contain the following base structure 
+(then according to each request, responses may have additional fields): 
 
-   3.1   GET Requests  
-      
-      The value of TYPE is a 1 byte long unsigned integer field and its value for GET requests is
-      0x00 while the CMD is a 1 byte long unsigned integer field and its value varies
-      according to which command is needed.
+                  +------+-----+
+                  | TYPE | CMD |
+                  +------+-----+
+                  |   1  |  1  |
+                  +------+-----+
 
-      3.1.1   List of users  
-         
-         CMD value 0x00. Command used to get a list of all users in the server.
+Where TYPE refers to the command type, which can be:
+   0x00 for a Get request
+   0x01 for a Alterations request
+   0x02 for Ending connection
 
-      3.1.2   Historic amount of connections
+and CMD refers to the specific command for each TYPE.
 
-         CMD value 0x01. Command used to get the historic amount of connections over the server.
+The associated CMD values for Get requests are the following:
+   o  0x00 to get the list of users
+   o  0x01 to get the historic amount of connections over the server
+   o  0x02 to get the concurrent connections quantity
+   o  0x03 to get the quantity of bytes transfered
+   o  0x04 to get the status of password spoofing over POP3 in the server
+   o  0x05 to get the status of authentication in the server
+   o  0x06 to get the quantity of bytes transfered in the server // VUELA ?????
+   o  0x07 to get access to the logs of the server // VUELA ?????
 
-      3.1.3   Quantity of current  connections
-         
-         CMD value 0x02. Command used quantity of current connections.
-
-      3.1.4   Quantity of bytes transfered  
-         
-         CMD value 0x03. Command used to get the quantity of bytes transfered in the server.
-      
-      3.1.5   Current status of the password disector  
-
-         CMD value 0x04. Command used to get the status of the password disector over the server (over POP3 protocol).
-
-      3.1.6   Bytes transfered from a user  TODO: ESTO NO SE SI ES MEDIO UNA FLASHEADA
-
-         CMD value 0x05. Command used to get amount of bytes transfered by a specific user, the request adds to the 
-         base structure the following fields.
-
-                     +------+-----+------+----------+
-                     | TYPE | CMD | ULEN |  UNAME   |
-                     +------+-----+-----------------|
-                     |   1  |  1  |  1   | 1 to 255 |
-                       +------+-----+------+--------+
-         In which:
-               o The ULEN field contains the length of the UNAME field that follows.
-               o The UNAME field contains the username as known to the source operating system.
-         
-         It is relevant to state that only users with admin priviledges are allowed to use this request.
-
-         
-      3.1.7   Access to the logs of the server
-
-         CMD value 0x06. Command used to access the logs over the server.
-         It is relevant to state that only users with admin priviledges are allowed to use this request.
-
-      
-
-   3.2   Get Responses
-
-      every server response will contain a general base structure as it follows
-      (and then according to each request can add different parameters):
-
-                     +----------+
-                     |  STATUS  |
-                     +----------+
-                     |    1     |
-                     +----------+
-
-      In which  STATUS is a 1 byte long unsigned integer refering to the request status,
-      and its values can be:
-
-         o 0x00 succedeed
-         o 0x01 general server failure
-         o 0x02 unsupported type
-         o 0x03 unsupported command
-
-
-      3.2.1   List of users  
-         
-         TODO: PREGUNTAR ESTE
-         The list of users command returns content within the following structure:
-
-                  +----------+------------+
-                  |  STATUS  |   USRS     |
-                  +----------+------------+
-                  |    1     |  Variable  |
-                  +----------+------------+
-
-         Where:TODO:ESCRIBIR BIEN 
-         o  STATUS can take the values previously specified.
-         o  USRS refers to the user list itself in ASCII charset, where the first byte indicates the username lenght.
-
-      3.2.2   Historic amount of connections over the server
+The associated CMD values for Alterations request are the following:
+   o  0x00 to Add a user 
+   o  0x01 to Delete a user 
+   o  0x02 to toggle password spoofing over POP3 in the server
+   o  0x03 to toggle authentication in the server
+   o  0x04 to set a new password // VUELA ?????
+   o  0x05 to set a user admin priviledges // VUELA ?????
    
-         The historic amount of connections over the server command returns content within the following structure:
+In case of Ending a connection no CMD value is needed. TODO: AGREGAR COMANDOS DE CMD ACA SI HACEN FALTA
 
-                  +----------+-------+
-                  |  STATUS  |  QTY  |
-                  +----------+-------+
-                  |    1     |   8   |
-                  +----------+-------+
-         
-         Where: 
-         TODO: los 8  bytes son pensados en funcion de escalabilidad pero realmente a nosotros con 2 nos alcanza no?
-         o  STATUS can take the values previously specified.
-         o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.
+5.  General response structure
 
-      3.2.3   Quantity of current  connections
-   
-         The quantity of current connections command returns content within the following structure:
+Every server response will contain a general base structure as follows 
+(and then according to each request, responses may have additional fields):
 
-                  +----------+-------+
-                  |  STATUS  |  QTY  |
-                  +----------+-------+
-                  |    1     |   2   |
-                  +----------+-------+
-         Where:
+TODO: TENDRIA SENTIDO SACAR EL STATUS FIELD Y Q CUANDO HAYA UN ERROR DEVUELVA UN TYPE INEXISTENTE? Y DE ESA FORMA AHORRARNOS EL BYTE DE STATUS (para mi que no)
+                  +----------+
+                  |  STATUS  |
+                  +----------+
+                  |    1     |
+                  +----------+
 
-         o  STATUS can take the values previously specified.
-         o  QTY is a 2 byte long unsigned integer related to the amount of users listed.
+STATUS refers to the request status, and its values can be:
 
+   o 0x00 succedeed
+   o 0x01 general server failure
+   o 0x02 unsupported type
+   o 0x03 unsupported command
 
-      3.2.4   Quantity of bytes transfered  
-   
-         The quantity of bytes transfered command returns content within the following structure:
+   TODO:  o  X'09' to X'FF' unassigned --> hace falta aclarar algo con esto? 
 
-                  +----------+-------+
-                  |  STATUS  |  QTY  |
-                  +----------+-------+
-                  |    1     |   8   |
-                  +----------+-------+
+6.  GET Commands
 
-         Where:
+      6.1   List of users  
 
-         o  STATUS can take the values previously specified.
-         o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.
-      
-      3.2.5   Current status of the password disector 
+         Request:
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x00 |
+            +------+-----+
             
-         The current status of the password disector over the server (over POP3 protocol) returns content within the following structure:
+            CMD value is 0x00. Command used to get a list of all users in the server.
 
-                  +----------+---------------+
-                  |  STATUS  |    SPOOFING   |
-                  +----------+---------------+
-                  |    1     |       1       |
-                  +----------+---------------+
+         Response:
 
-         o  STATUS can take the values previously specified.
-         o  SPOOFING 1 byte long unsigned integer in which: 
+            TODO: PREGUNTAR ESTE
+            The list of users command returns content within the following structure:
+
+                     +----------+------------+
+                     |  STATUS  |   USRS     |
+                     +----------+------------+
+                     |    1     |  Variable  |
+                     +----------+------------+
+
+            Where:TODO:ESCRIBIR BIEN 
+            o  STATUS can take the values previously specified.
+            o  USRS refers to the user list itself in ASCII charset, where the first byte indicates the username length.
+
+
+      6.2   Historic amount of connections
+
+         Request:
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x01 |
+            +------+-----+
+
+            CMD value is 0x01. Command used to get the historic amount of connections over the server.
+
+         Response:
+
+            The historic amount of connections over the server command returns content within the following structure:
+
+                     +----------+-------+
+                     |  STATUS  |  QTY  |
+                     +----------+-------+
+                     |    1     |   8   |
+                     +----------+-------+
             
-            0x00 means that the spoofing is turned OFF.
-            0x01 means that the spoofing is turned ON.
+            Where: 
+            TODO: los 8  bytes son pensados en funcion de escalabilidad pero realmente a nosotros con 2 nos alcanza no?
+            o  STATUS can take the values previously specified.
+            o  QTY specifies the amount of bytes transfered.
 
-      3.2.6  Bytes transfered from a user  
-         
-         The amount of bytes transfered by a specific user returns content within the following structure:
-         
-                  +----------+-------+------+----------+
-                  |  STATUS  |  QTY  | ULEN |  UNAME   |
-                  +----------+-------+------+----------+
-                  |    1     |   8   |  1   | 1 to 255 |
-                  +----------+-------+------+----------+
-         
-         o  STATUS can take the values previously specified.
-         o  QTY is a 8 byte long unsigned integer related to the amount of bytes transfered.                             
-         o  The ULEN field contains the length of the UNAME field that follows.
-         o  The UNAME field contains the username related to the request.    
-                     
-      3.2.7  Access to the logs of the server
-      TODO: ESTO NO SE MUY BIEN SI TA BIEN (PROBABLEMENTE NO)
- 
-         Te logs from the user request returns content within the following structure:
+      6.3   Quantity of current  connections
+
+         Request:
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x02 |
+            +------+-----+
+            
+            CMD value is 0x02. Command used quantity of current connections.
+
+         Response:
+
+            The quantity of current connections command returns content within the following structure:
+
+                     +----------+-------+
+                     |  STATUS  |  QTY  |
+                     +----------+-------+
+                     |    1     |   2   |
+                     +----------+-------+
+            Where:
+
+            o  STATUS can take the values previously specified.
+            o  QTY specifies the amount of users listed.
+
+      6.4   Quantity of bytes transfered  
+
+         Request:
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x03 |
+            +------+-----+
+            
+            CMD value is 0x03. Command used to get the quantity of bytes transfered in the server.
+
+         Response:
+
+            The quantity of bytes transfered command returns content within the following structure:
+
+                     +----------+-------+
+                     |  STATUS  |  QTY  |
+                     +----------+-------+
+                     |    1     |   8   |
+                     +----------+-------+
+
+            Where:
+
+            o  STATUS can take the values previously specified.
+            o  QTY specifies the amount of bytes transfered.
+
+      6.5   Password spoofing status
+
+         Request:
+
+               +------+-----+
+               | TYPE | CMD |
+               +------+-----+ //CAMBIO
+               | 0x0  |0x04 |
+               +------+-----+
+               
+               CMD value is 0x04. Command used to check if password spoofing over POP3 is enabled.
+
+         Response:
+
+            The password spoofing status command returns content within the following structure:
+
+            +----------+------------+
+            |  STATUS  |  SPOOFING  |
+            +----------+------------+
+            |    1     |     1      |
+            +----------+------------+
+
+            Where SPOOFING refers to the state of password spoofing over POP3:
+               0x00 means that spoofing is turned OFF.
+               0x01 means that spoofing is turned ON.
+
+      6.6   Authentication status   
+
+         Request:
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x05 |
+            +------+-----+
+            
+            CMD value is 0x05. Command used to check if authentication is enabled.
+
+         Response:
+
+            The authentication status command returns content within the following structure:
+
+            +----------+------------+
+            |  STATUS  |    AUTH    |
+            +----------+------------+
+            |    1     |     1      |
+            +----------+------------+
+
+            Where AUTH refers to the state of authentication in the server:
+               0x00 means that authentication is turned OFF.
+               0x01 means that authentication is turned ON.
+      
+      6.?   Current status of the password director  //// VUELA ?????? WTF IS THIS NO ESTA NI DEFINIDO ARRIBA
+
+         Request: 
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x04 |
+            +------+-----+
+
+         CMD value is 0x04. Command used to get the status of the password director over the server (over POP3 protocol).
+
+         Response: ///// VUELA ?????????????? WTF ES ESTA RESPONSE ?????????????
+
+            The current status of the password disector over the server (over POP3 protocol) returns content within the following structure:
+
+                     +----------+---------------+
+                     |  STATUS  |    SPOOFING   |
+                     +----------+---------------+
+                     |    1     |       1       |
+                     +----------+---------------+
+
+            o  STATUS can take the values previously specified.
+            o  SPOOFING field: 
+               0x00 means that spoofing is turned OFF.
+               0x01 means that spoofing is turned ON.
+
+               o  0x00 to get the list of users
+
+      6.7   Bytes transfered from a user  TODO: ESTO NO SE SI ES MEDIO UNA FLASHEADA  VUELA ??????
+
+         Request:
+
+            CMD value is 0x05. Command used to get amount of bytes transfered by a specific user, the request adds to the 
+            base structure the following fields.
+
+                        +------+-----+------+----------+
+                        | TYPE | CMD | ULEN |  UNAME   |
+                        +------+-----+-----------------|
+                        | 0x0  |0x06 |  1   | 1 to 255 |
+                        +------+-----+------+----------+
+            In which:
+                  o The ULEN field contains the length of the UNAME field that follows.
+                  o The UNAME field contains the username as known to the source operating system.
+            
+            It is relevant to state that only users with admin priviledges are allowed to use this request.
+
+         Response:
+
+            The amount of bytes transfered by a specific user returns content within the following structure:
+            
+                     +----------+-------+------+----------+
+                     |  STATUS  |  QTY  | ULEN |  UNAME   |
+                     +----------+-------+------+----------+
+                     |    1     |   8   |  1   | 1 to 255 |
+                     +----------+-------+------+----------+
+            
+            o  STATUS can take the values previously specified.
+            o  QTY specifies the amount of bytes transfered.                             
+            o  The ULEN field contains the length of the UNAME field that follows.
+            o  The UNAME field contains the username related to the request.   
+
+      6.8   Access to the logs of the server
+
+         Request:
+
+            +------+-----+
+            | TYPE | CMD |
+            +------+-----+ //CAMBIO
+            | 0x0  |0x07 |
+            +------+-----+
+
+
+            CMD value 0x06. Command used to access the logs over the server.
+            It is relevant to state that only users with admin priviledges are allowed to use this request.
+
+         Response:
+
+            TODO: ESTO NO SE MUY BIEN SI TA BIEN (PROBABLEMENTE NO)
+   
+            Te logs from the user request returns content within the following structure:
 
                   +----------+-------------+-------------+
                   |  STATUS  |    QARGS    |     ARGS    |
@@ -272,216 +406,138 @@ Acknowledgments
                   |    1     |      1      |   Variable  |
                   +----------+-------------+-------------+
 
-         o  TYPE and CMD and STATUS are the values previously specified.
-         o  QARGS refers to the amount of parameters to be parsed.
-         o  ARGS are the arguments itself (the logs).
+            o  TYPE and CMD and STATUS are the values previously specified.
+            o  QARGS refers to the amount of parameters to be parsed.
+            o  ARGS are the arguments itself (the logs).
 
 
-4.  Alterations Commands
+7.  Alterations Commands
 
-      The value of TYPE is a 1 byte long unsigned integer field and its value for Alterations requests is
-      0x01 while the CMD is a 1 byte long unsigned integer field and its value varies
-      according to which command is needed.
+      7.1  Add a User
 
-   4.1   Alterations Requests  
+         Request:
 
-      4.1.1  Add a User
-            
             CMD value 0x00. Command used to add a user to the server,
             the following  structure is required:
 
-            +-------+-----+------+----------+------+----------+----------+
-            |  TYPE | CMD | ULEN |  UNAME   | PLEN |  PASSWD  |   ROLE   |
-            +-------+-----+------+----------+------+----------+----------+
-            |   1   |  1  |  1   | 1 to 255 |  1   | 1 to 255 |    1     |
-            +-------+-----+------+----------+------+----------+----------+      
+                  +-------+-----+----------+------+----------+------+----------+
+                  |  TYPE | CMD |   ROLE   | ULEN |  UNAME   | PLEN |  PASSWD  |
+                  +-------+-----+----------+------+----------+------+----------+
+                  | 0x01  | 0x0 |    1     |  1   | 1 to 255 |  1   | 1 to 255 |
+                  +-------+-----+----------+------+----------+------+----------+     
 
-         o  ULEN is a 1 byte long unsigned integer refering to the length of the UNAME field that follows.
-         o  UNAME contains the username (must be in ASCII charset).
-         o  PLEN field contains a 1 byte long unsigned integer refering to the length of the PASSWD field that follows.
-         o  PASSWD field contains the password association with the given UNAME (must be in ASCII charset).
-         o  ROLE field contains a 1 byte long unsigned integer refering  to the role of the new user.
-
-               0x00 for normal users
-               0x01 for admin users
-TODO: ANCHO FIJO PRIMERO
-
-      4.1.2  Delete User
-
-            To delete a user, the following  structure is required:
-
-           +------+-----+------+----------+------+----------+
-           | TYPE | CMD | ULEN |  UNAME   | PLEN |  PASSWD  |
-           +------+-----+------+----------+------+----------+
-           |   1  |  1  |  1   | 1 to 255 |  1   | 1 to 255 |
-           +------+-----+------+----------+------+----------+
-
-         In which TYPE and CMD values are the specified in "General request structure" section and
-         ULEN, UNAME,PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
-         It is important to specify that the UNAME value must exist in order to be deleted.
-         
-            o In case ROLE of the user making the request is 0x00, it means that the user making the request doesn't have 
-              admin priviledges, in consecuence, the password must match with the actual password of 
-              the UNAME user
-
-            o In case ROLE of the user making the request is 0x01, it means that the user making the request do have 
-              admin priviledges, in consecuence, the password field will not be evaluated.
-
-            o In case authentication is turned off the password field will not be evaluated.
-        
-         TODO: NO SE SI TA BIEN ESTE PLANTEO DEL ADMIN priviledges,
-          SI SOY ADMIN PODRIA DIRECTAMENTE NO MANDAR NADA EN LA CONTRASEÑA?
-           PQ POR AHORA AUNQUE SEA ADMIN TENGO QUE MANDAR ALGO DE CONTENIDO EN LA CONTRASEÑA
-            (QUE NO VA A SER EVALUADO PERO HAY QUE MANDARLO IGUAL)
-
-
-
-      4.1.3  Set new Password
-
-            To set a  new password for a user, the following  structure is required:
-
-           +------+-----+------+----------+------+----------+------------+------------------+
-           | TYPE | CMD | ULEN |  UNAME   | PLEN |  PASSWD  |  PLEN.NEW  |     PASSWD.NEW   |
-           +------+-----+------+----------+------+----------+------------+------------------+
-           |   1  |  1  |  1   | 1 to 255 |  1   | 1 to 255 |     1      |      1 to 255    |
-           +------+-----+------+----------+------+----------+------------+------------------+
-TODO: SACAR PASSWORD VIEJA
-
-         In which TYPE and  CMD values are the specified in "General request structure" section
-         and ULEN, UNAME, PLEN, PASSWD and ROLE are the same fields specified in 6.1.1. 
-         PLEN.NEW and PASSWD.NEW have the same structure type as PLEN and PASSWD and contains the new password 
-         specifications.
-         It is important to specify that the UNAME value must exist in order to be deleted.
-
-            o In case ROLE of the user making the request is 0x00, it means that the user making the request doesn't have 
-              admin priviledges, in consecuence, the password must match with the actual password of 
-              the UNAME user
-
-            o In case ROLE of the user making the request is 0x01, it means that the user making the request do have 
-              admin priviledges, in consecuence, the password field will not be evaluated.
+            o  ROLE field refers to the role of the new user:
+                  0x00 for normal users
+                  0x01 for admin users
+            o  ULEN specifies the length of the UNAME field that follows.
+            o  UNAME contains the username (must be in ASCII charset).
+            o  PLEN specifies the length of the PASSWD field that follows.
+            o  PASSWD field contains the password association with the given UNAME (must be in ASCII charset).
             
-            o In case authentication is turned off the password field will not be evaluated.
 
-      4.1.3  Give a user admin priviledges
+         Response: standard response as specified in section 5
 
-            //TODO: ESTO NO SE SI ESTA BIEN, CUALQUIER USUARIO PODRIA HACERSE ADMIN
+      7.2  Delete User
 
-            To set a  new password for a user, the following  structure is required:
+            Request:
 
-                  +------+-----+------+----------+------+----------+
-                  | TYPE | CMD | ULEN |  UNAME   |
-                  +------+-----+------+----------+-
-                  |   1  |  1  |  1   | 1 to 255 |  1   | 1 to 255 |
-                  +------+-----+------+----------+------+----------+
+               To delete a user, the following  structure is required:
 
-           In which the fields are the same specified in 6.1.1 and in 2.
-           It is relevant to state that this command can only be excecuted by users with admin role, meaning 
-           that only an admin can make an existing user admin.
-           In any other case, the request will not be evaluated, EXCEPT authentication is turned off. 
-           This case is analogous to the case that an admin user is making the request.
+                     +------+-----+------+----------+
+                     | TYPE | CMD | ULEN |  UNAME   |
+                     +------+-----+------+----------+ //CAMBIO VUELA PWD ACA SOLO SE CONECTAN ADMINS
+                     | 0x01 |0x01 |  1   | 1 to 255 |
+                     +------+-----+------+----------+
 
-      4.1.4 Toggle password spoofing
-
-            In order to toggle password spoofing in the server, the client MUST have admin priviledges.
-            This request must contain the following structure:
+               In which TYPE and CMD values are the specified in "General request structure" section and
+               ULEN, UNAME,PLEN, PASSWD and ROLE are the same fields specified in 7.1. 
+               It is important to specify that the UNAME value must exist in order to be deleted.
             
-                  +--------+-------+---------------+
-                  |  TYPE  |  CMD  |   SPOOFING    |
-                  +--------+-------+---------------+
-                  |   1    |   1   |       1       |
-                  +--------+-------+---------------+
+               o In case authentication is turned off the password field will not be evaluated.
 
-            As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x04
-            and SPOOFING is a 1 byte long unsigned integer.
-               0x00 to turn spoofing OFF
-               0x01 to turn spoofing ON 
+            Response: standard response as specified in section 5
+
+      7.3  Set new Password // VUELA ?????? NO ES NECESARIO PERO ESTA BUENA DIJO CODA
+
+            Request:
+
+               To set a  new password for a user, the following  structure is required:
+
+                     +------+-----+------+----------+--------+-------------+
+                     | TYPE | CMD | ULEN |  UNAME   |  PLEN  |   PASSWD    |
+                     +------+-----+------+----------+--------+-------------+
+                     | 0x01 |0x02 |  1   | 1 to 255 |    1   |   1 to 255  |
+                     +------+-----+------+----------+--------+-------------+
+
+               In which TYPE and  CMD values are the specified in "General request structure" section
+               and ULEN and UNAME are the same fields specified in 7.1. 
+               PLEN and PASSWD have the same structure type as PLEN and PASSWD specified in 7.1 but
+               the fields contain the new password specifications.
+               It is important to specify that the UNAME value must exist in order to set new password.
+               
+               o In case authentication is turned off the password field will not be evaluated.
+
+            Response: standard response as specified in section 5
+
+      7.4  Give a user admin priviledges // VUELA ??????? CODA DIJO QUE PARA CAMBIAR ROL NO ES NECESARIO, PODEMOS BORRAR Y VOLVER A AGREGAR USUARIO
+
+            Request:
+               //TODO: ESTO NO SE SI ESTA BIEN, CUALQUIER USUARIO PODRIA HACERSE ADMIN
+
+               To set a  new password for a user, the following  structure is required:
+
+                     +------+-----+------+----------+
+                     | TYPE | CMD | ULEN |  UNAME   |
+                     +------+-----+------+----------+
+                     |0x01  |0x03 |  1   | 1 to 255 |
+                     +------+-----+------+----------+
+
+               In which the fields are the same specified in 7.1.
+
+               // VUELA ????????
+               It is relevant to state that this command can only be excecuted by users with admin role, meaning 
+               that only an admin can make an existing user admin.
+               In any other case, the request will not be evaluated, EXCEPT authentication is turned off. 
+               This case is analogous to the case that an admin user is making the request.
+               //
+
+            Response: standard response as specified in section 5
+
+      7.5 Toggle password spoofing
+
+            Request:
+
+               In order to toggle password spoofing in the server, the client MUST have admin priviledges.
+               This request must contain the following structure:
+               
+                     +--------+-------+---------------+
+                     |  TYPE  |  CMD  |   SPOOFING    |
+                     +--------+-------+---------------+
+                     |  0x01  | 0x04  |       1       |
+                     +--------+-------+---------------+
+
+               As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x04.
+               SPOOFING field values:
+                  0x00 to turn spoofing OFF
+                  0x01 to turn spoofing ON 
+
+            Response: standard response as specified in section 5
    
-      4.1.5 Toggle authentication in the server TODO: GETTER A ESTO
-                  
-                  +--------+-------+---------------+
-                  |  TYPE  |  CMD  |     AUTH      |
-                  +--------+-------+---------------+
-                  |   1    |   1   |       1       |
-                  +--------+-------+---------------+
+      7.6 Toggle authentication in the server
 
-            In which AUTH is a 1 byte long unsigned integer and its values can be:
-               0x00 to turn authentication OFF
-               0x01 to turn authentication ON 
+            Request: 
+               
+                     +--------+-------+---------------+
+                     |  TYPE  |  CMD  |     AUTH      |
+                     +--------+-------+---------------+
+                     |  0x01  | 0x05  |       1       |
+                     +--------+-------+---------------+
 
-   4.2   Modification Responses  
+               AUTH field values:
+                  0x00 to turn authentication OFF
+                  0x01 to turn authentication ON
 
-         All modification requests have the following response structure:
+            Response: standard response as specified in section 5
+ 
 
-                  +----------+
-                  |  STATUS  |
-                  +----------+
-                  |    1     |
-                  +----------+
 
-         STATUS can be:
-         
-            o 0x00 succedeed
-            o 0x01 general server failure
-            o 0x02 unsupported type
-            o 0x03 unsupported command
-
-5.  General request structure
-
-   Once the client is authenticated (and in consequence, the session with the server is established).
-   All client request MUST contain the following base structure (and then according to each request can add different parameters): 
-   
-                     +------+-----+
-                     | TYPE | CMD |
-                     +------+-----+
-                     |   1  |  1  |
-                     +------+-----+
-
-   Where TYPE refers to the command type, which can be:
-      0x00 for a Get request
-      0x01 for a Alterations request
-      0x02 for Ending connection
-   
-   and CMD refers to the specific command for each TYPE.
-
-   The associated CMD values for Get requests are the following:
-      o  0x00 to get the list of users
-      o  0x01 to get the historic amount of connections over the server
-      o  0x02 to get the concurrent connections quantity
-      o  0x03 to get the quantity of bytes transfered in the server
-      o  0x04 to get the status of the password spoofing over the server
-      o  0x05 to get the status of the password spoofing over the server
-      o  0x06 to get access to the logs of the server
-
-   
-   The associated CMD values for Alterations request are the following:
-      o  0x00 to Add a user 
-      o  0x01 to Delete a user 
-      o  0x02 to set a new password 
-      o  0x03 to set a user admin priviledges
-      o  0x04 to toggle password spoofing in the server
-      o  0x05 to toggle authentication in the server
-    
-
-      
-   In case of Ending a connection no CMD value is needed. TODO: AGREGAR COMANDOS DE CMD ACA SI HACEN FALTA
-
-6.  General response structure
-
-   As well as in the general request structure, every server response will contain a
-   general base structure as it follows (and then according to each request can add different parameters):
-
-   TODO: TENDRIA SENTIDO SACAR EL STATUS FIELD Y Q CUANDO HAYA UN ERROR DEVUELVA UN TYPE INEXISTENTE? Y DE ESA FORMA AHORRARNOS EL BYTE DE STATUS (para mi que no)
-                     +----------+
-                     |  STATUS  |
-                     +----------+
-                     |    1     |
-                     +----------+
-
-  STATUS refers to the request status, and its values can be:
-
-      o 0x00 succedeed
-      o 0x01 general server failure
-      o 0x02 unsupported type
-      o 0x03 unsupported command
-
-      TODO:  o  X'09' to X'FF' unassigned --> hace falta aclarar algo con esto? 
