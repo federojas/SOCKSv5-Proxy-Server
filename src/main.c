@@ -9,16 +9,16 @@
 #include <sys/socket.h>  // socket
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include "selector.h"
-#include "logger.h"
-#include "socksv5_nio.h"
+#include "./include/selector.h"
+#include "./include/logger.h"
+#include "./include/socksv5_nio.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
 #define MAX_PENDING_CONN 20
 #define MAX_ADDR_BUFFER 128
 static bool done = false;
-static char addrBuffer[MAX_ADDR_BUFFER];
+// static char addrBuffer[MAX_ADDR_BUFFER];
 
 static void
 sigterm_handler(const int signal) {
@@ -33,53 +33,55 @@ struct buffer {
 };
 
 // TODO: este handler no se si esta bien
-void readHandler(struct selector_key *key){
+void read_handler(struct selector_key *key){
     char buffer[1024]; // Buffer for echo string
 	// Receive message from client
 	ssize_t numBytesRcvd = recv(key->fd, buffer, 1024, 0);
 	if (numBytesRcvd < 0) {
-		log(ERROR, "recv() failed");
-		return -1;   // TODO definir codigos de error
+		log_print(LOG_ERROR, "recv() failed");
+		// return -1;   // TODO definir codigos de error
 	}
 
     // TODO: Me falta registrarlo para escritura una vez que ya lei todo?
 }
 
 
-void writeHandler(struct selector_key * key){
-    struct buffer * buffer = (struct buffer * )key->data;
-    size_t bytesToSend = buffer->len - buffer->from;
-	if (bytesToSend > 0) {  // Puede estar listo para enviar, pero no tenemos nada para enviar
-		log(INFO, "Trying to send %zu bytes to socket %d\n", bytesToSend, socket);
-		size_t bytesSent = send(socket, buffer->buffer + buffer->from,bytesToSend,  MSG_DONTWAIT); 
-		log(INFO, "Sent %zu bytes\n", bytesSent);
+void write_handler(struct selector_key * key){
+    // struct buffer * buffer = (struct buffer * )key->data;
+    // size_t bytesToSend = buffer->len - buffer->from;
+	// if (bytesToSend > 0) {  // Puede estar listo para enviar, pero no tenemos nada para enviar
+	// 	log_print(INFO, "Trying to send %zu bytes to socket %d\n", bytesToSend, socket);
+	// 	size_t bytesSent = send(socket, buffer->buffer + buffer->from,bytesToSend,  MSG_DONTWAIT); 
+	// 	log_print(INFO, "Sent %zu bytes\n", bytesSent);
 
-		if ( bytesSent < 0) {
-			// Esto no deberia pasar ya que el socket estaba listo para escritura
-			// TODO: manejar el error
-			log(FATAL, "Error sending to socket %d", socket);
-		} else {
-			size_t bytesLeft = bytesSent - bytesToSend;
+	// 	if ( bytesSent < 0) {
+	// 		// Esto no deberia pasar ya que el socket estaba listo para escritura
+	// 		// TODO: manejar el error
+	// 		// log_print(FATAL, "Error sending to socket %d", socket);
+	// 	} else {
+	// 		size_t bytesLeft = bytesSent - bytesToSend;
 
-			// Si se pudieron mandar todos los bytes limpiamos el buffer y sacamos el fd para el select
-			if ( bytesLeft == 0) {
-				clear(buffer);
-				// TOODO : ME FALTA SACAR EL FD DEL SELECTOR
-			} else {
-				buffer->from += bytesSent;
-			}
-		}
-	}
+	// 		// Si se pudieron mandar todos los bytes limpiamos el buffer y sacamos el fd para el select
+	// 		if ( bytesLeft == 0) {
+	// 			clear(buffer);
+	// 			// TOODO : ME FALTA SACAR EL FD DEL SELECTOR
+	// 		} else {
+	// 			buffer->from += bytesSent;
+	// 		}
+	// 	}
+	// }
 }
+
+
 
 // Estos serian los handlers de los sockets activos que abri con 
 // el destino
-static fd_handler activeSocketHandler = {
-    .handle_read = &readHandler,
-    .handle_write = &writeHandler,
-    .handle_block = NULL,
-    .handle_close = NULL
-};
+// static fd_handler activeSocketHandler = {
+//     .handle_read = &readHandler,
+//     .handle_write = &writeHandler,
+//     .handle_block = NULL,
+//     .handle_close = NULL
+// };
 
 int main(const int argc, const char **argv) {
     unsigned port = PORT;

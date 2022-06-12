@@ -2,8 +2,8 @@
 *
 *
 */
-#ifndef SOCKS5_HELLO_PARSER_H_
-#define SOCKS5_HELLO_PARSER_H_
+#ifndef HELLO_PARSER_H
+#define HELLO_PARSER_H
 #include <stdint.h>
 #include <stdbool.h>
 #include "buffer.h"

@@ -9,60 +9,19 @@
 #include <time.h>
 #include <unistd.h>  // close
 #include <pthread.h>
+#include <netdb.h>
 
 #include <arpa/inet.h>
 
-#include "hello.h"
-#include "request.h"
+#include "../include/hello_parser.h"
+#include "../include/request_parser.h"
 #include "buffer.h"
 
 #include "stm.h"
-#include "socks5nio.h"
-#include"netutils.h"
+#include "../include/socksv5_nio.h"
+#include"../include/netutils.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
-
-static const unsigned max_pool = 50;
-static unsigned pool_size = 0;
-static struct socks5 * pool = 0;
-
-static const struct state_definition * socks5_describe_states(void);
-
-
-static struct socks5 * socks5_new(int client_fd) {
-    struct soocks5 *ret;
-    char * error_message;
-
-    if(pool == NULL) {
-        ret = malloc(sizeof(*ret));
-    } else {
-        ret = pool;
-        pool = pool->next;
-        ret->next = 0;
-    }
-    if(ret == NULL) {
-        return NULL; //TODO error message?
-    }
-    
-    memset(ret, 0x00, sizeof(*ret));
-
-    ret->origin_fd = -1;
-    ret->client_fd = client_fd;
-    ret->client_addr_len = sizeof(ret->client_addr);
-
-    ret->stm.initial=HELLO_READ;
-    ret->stm.max_state=ERROR;
-    ret->stm.states=socks5_describe_states();
-    stm_init(&ret->stm);   
-
-    buffer_init(&ret->read_buffer, N(ret->raw_buff_a), ret->raw_buff_a);
-    buffer_init(&ret->write_buffer, N(ret->raw_buff_b), ret->raw_buff_b);
-
-    ret->references = 1;
-
-    return ret;
-}
-
 
 /** maquina de estados general */
 enum socks_v5state {
@@ -104,10 +63,8 @@ enum socks_v5state {
     ERROR,
 };
 
-////////////////////////////////////////////////////////////////////
-// DefiniciÃ³n de variables para cada estado
+//------------------------ ST_STRUCTS--------------------------
 
-/** usado por HELLO_READ, HELLO_WRITE */
 struct hello_st {
     /** buffer utilizado para I/O */
     buffer               *rb, *wb;
@@ -115,7 +72,6 @@ struct hello_st {
     /** el mÃ©todo de autenticaciÃ³n seleccionado */
     uint8_t               method;
 } ;
-
 struct request_st {
     /** buffer utilizado para I/O */
     buffer               *rb, *wb;
@@ -133,14 +89,29 @@ struct request_st {
     int                         *origin_fd;
 } ;
 
-/*
- * Si bien cada estado tiene su propio struct que le da un alcance
- * acotado, disponemos de la siguiente estructura para hacer una Ãºnica
- * alocaciÃ³n cuando recibimos la conexiÃ³n.
- *
- * Se utiliza un contador de referencias (references) para saber cuando debemos
- * liberarlo finalmente, y un pool para reusar alocaciones previas.
- */
+//------------------------------------------------------------
+
+static const unsigned max_pool = 50;
+static unsigned pool_size = 0;
+static struct socks5 * pool = 0;
+
+//--------------------FUNCTION DEFINITIONS------------------
+static void hello_read_init(const unsigned state, struct selector_key *key);
+static void hello_read_close(const unsigned state, struct selector_key *key);
+static unsigned hello_read(struct selector_key *key);
+//---------------------------------------------------------------
+static const struct state_definition * socks5_describe_states(void);
+
+
+/** definicionn de handlers para cada estado */
+static const struct state_definition client_statbl[] = {
+    {
+        .state            = HELLO_READ,
+        .on_arrival       = hello_read_init,
+        .on_departure     = hello_read_close,
+        .on_read_ready    = hello_read,
+    },
+};
 struct socks5 {
 
     struct sockaddr_storage       client_addr;
@@ -183,6 +154,28 @@ struct socks5 {
 
     struct socks5 *next;
 };
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////
+// DefiniciÃ³n de variables para cada estado
+
+/** usado por HELLO_READ, HELLO_WRITE */
+
+
+
+
+/*
+ * Si bien cada estado tiene su propio struct que le da un alcance
+ * acotado, disponemos de la siguiente estructura para hacer una Ãºnica
+ * alocaciÃ³n cuando recibimos la conexiÃ³n.
+ *
+ * Se utiliza un contador de referencias (references) para saber cuando debemos
+ * liberarlo finalmente, y un pool para reusar alocaciones previas.
+ */
 
 
 /** realmente destruye */
@@ -244,6 +237,39 @@ static const struct fd_handler socks5_handler = {
     .handle_block  = socksv5_block,
 };
 
+static struct socks5 *socks5_new(int client_fd) {
+    struct socks5 *ret;
+    char * error_message;
+
+    if(pool == NULL) {
+        ret = malloc(sizeof(*ret));
+    } else {
+        ret = pool;
+        pool = pool->next;
+        ret->next = 0;
+    }
+    if(ret == NULL) {
+        return NULL; //TODO error message?
+    }
+    
+    memset(ret, 0x00, sizeof(*ret));
+
+    ret->origin_fd = -1;
+    ret->client_fd = client_fd;
+    ret->client_addr_len = sizeof(ret->client_addr);
+
+    ret->stm.initial=HELLO_READ;
+    ret->stm.max_state=ERROR;
+    ret->stm.states=socks5_describe_states();
+    stm_init(&ret->stm);   
+
+    buffer_init(&ret->read_buffer, N(ret->raw_buff_a), ret->raw_buff_a);
+    buffer_init(&ret->write_buffer, N(ret->raw_buff_b), ret->raw_buff_b);
+
+    ret->references = 1;
+
+    return ret;
+}
 // Handlers top level de la conexiÃ³n pasiva.
 // son los que emiten los eventos a la maquina de estados.
 static void
@@ -492,112 +518,104 @@ hello_write(struct selector_key *key)
     return ret;
 }
 
-/** definicionn de handlers para cada estado */
-static const struct state_definition client_statbl[] = {
-    {
-        .state            = HELLO_READ,
-        .on_arrival       = hello_read_init,
-        .on_departure     = hello_read_close,
-        .on_read_ready    = hello_read,
-    },
 
 ///////////////////////////////////////////////////////////////////////////////
 
 
-////////////////  AUTH  ////////////////
+// ////////////////  AUTH  ////////////////
 
-static void 
-auth_init(struct selector_key *key)
-{
-    struct auth_st *d = &ATTACHMENT(key)->client.auth;
+// static void 
+// auth_init(struct selector_key *key)
+// {
+//     struct auth_st *d = &ATTACHMENT(key)->client.auth;
 
-    d->rb = &(ATTACHMENT(key)->read_buffer);
-    d->wb = &(ATTACHMENT(key)->write_buffer);
-    auth_parser_init(&d->parser,AUTH_SOCKS);
-    d->usr = &d->parser.usr;
-    d->pass = &d->parser.pass;
-}
+//     d->rb = &(ATTACHMENT(key)->read_buffer);
+//     d->wb = &(ATTACHMENT(key)->write_buffer);
+//     auth_parser_init(&d->parser,AUTH_SOCKS);
+//     d->usr = &d->parser.usr;
+//     d->pass = &d->parser.pass;
+// }
 
-static uint8_t 
-check_credentials(const struct auth_st *d){
-    if(registed((char*)d->usr->uname,(char*)d->pass->passwd) != 0) return AUTH_SUCCESS;
-    return AUTH_FAIL;
-}
+// static uint8_t 
+// check_credentials(const struct auth_st *d){
+//     if(registed((char*)d->usr->uname,(char*)d->pass->passwd) != 0) return AUTH_SUCCESS;
+//     return AUTH_FAIL;
+// }
 
-static unsigned 
-auth_process(struct auth_st *d){
-    unsigned ret = AUTH_WRITE;
-    uint8_t status = check_credentials(d);
-    if(auth_marshal(d->wb,status,d->parser.version) == -1){
-        ret = ERROR;
-    }
-    d->status = status;
-    return ret;
-}
+// static unsigned 
+// auth_process(struct auth_st *d){
+//     unsigned ret = AUTH_WRITE;
+//     uint8_t status = check_credentials(d);
+//     if(auth_marshal(d->wb,status,d->parser.version) == -1){
+//         ret = ERROR;
+//     }
+//     d->status = status;
+//     return ret;
+// }
 
-static unsigned 
-auth_read(struct selector_key *key){
-    unsigned ret = AUTH_READ;
-    struct auth_st * d = &ATTACHMENT(key)->client.auth;
-    bool error = false;
-    uint8_t *ptr;
-    buffer * buff = d->rb;
-    size_t count;
-    ssize_t n;
+// static unsigned 
+// auth_read(struct selector_key *key){
+//     unsigned ret = AUTH_READ;
+//     struct auth_st * d = &ATTACHMENT(key)->client.auth;
+//     bool error = false;
+//     uint8_t *ptr;
+//     buffer * buff = d->rb;
+//     size_t count;
+//     ssize_t n;
 
-    ptr = buffer_write_ptr(buff,&count);
-    n = recv(key->fd,ptr,count,0);
-    if (n > 0){
-        buffer_write_adv(buff,n);
-        int st = auth_consume(buff,&d->parser,&error);
-        if(auth_is_done(st,0)){
-            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
-            {
-                ret = auth_process(d);
-                memcpy(&ATTACHMENT(key)->socks_info.user_info,&d->parser.usr,sizeof(d->parser.usr));
+//     ptr = buffer_write_ptr(buff,&count);
+//     n = recv(key->fd,ptr,count,0);
+//     if (n > 0){
+//         buffer_write_adv(buff,n);
+//         int st = auth_consume(buff,&d->parser,&error);
+//         if(auth_is_done(st,0)){
+//             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+//             {
+//                 ret = auth_process(d);
+//                 memcpy(&ATTACHMENT(key)->socks_info.user_info,&d->parser.usr,sizeof(d->parser.usr));
                 
-            }
-            else{
-                error = true;
-                ret = ERROR;
-            }
-        }
+//             }
+//             else{
+//                 error = true;
+//                 ret = ERROR;
+//             }
+//         }
 
-    }
-    else{
-        error = true;
-        ret = ERROR;
-    }
-    return error ? ERROR : ret;
-}
+//     }
+//     else{
+//         error = true;
+//         ret = ERROR;
+//     }
+//     return error ? ERROR : ret;
+// }
 
-static unsigned auth_write(struct selector_key *key){
-    struct auth_st * d = &ATTACHMENT(key)->client.auth;
-    unsigned ret = AUTH_WRITE;
-    uint8_t *ptr;
-    size_t count;
-    ssize_t n;
-    buffer *buff = d->wb;
-    ptr = buffer_read_ptr(buff,&count);
-    n = send(key->fd,ptr,count,MSG_NOSIGNAL);
-    if(d->status != AUTH_SUCCESS){
-        ret = ERROR;
-    }
-    else if (n > 0){
-        buffer_read_adv(buff,n);
-        if(!buffer_can_read(buff)){
-            if(selector_set_interest_key(key,OP_READ) == SELECTOR_SUCCESS){
-                ret = REQUEST_READ;
-            }
-            else{
-                ret = ERROR;
-            }
-        }
-    }
-    return ret;
-}
+// static unsigned auth_write(struct selector_key *key){
+//     struct auth_st * d = &ATTACHMENT(key)->client.auth;
+//     unsigned ret = AUTH_WRITE;
+//     uint8_t *ptr;
+//     size_t count;
+//     ssize_t n;
+//     buffer *buff = d->wb;
+//     ptr = buffer_read_ptr(buff,&count);
+//     n = send(key->fd,ptr,count,MSG_NOSIGNAL);
+//     if(d->status != AUTH_SUCCESS){
+//         ret = ERROR;
+//     }
+//     else if (n > 0){
+//         buffer_read_adv(buff,n);
+//         if(!buffer_can_read(buff)){
+//             if(selector_set_interest_key(key,OP_READ) == SELECTOR_SUCCESS){
+//                 ret = REQUEST_READ;
+//             }
+//             else{
+//                 ret = ERROR;
+//             }
+//         }
+//     }
+//     return ret;
+// }
 
-////////////////////////////////////////
+// ////////////////////////////////////////
 
 
 ////////////////  REQUEST  ////////////////
