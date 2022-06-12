@@ -38,14 +38,10 @@ Acknowledgments
       o  Get the status of password spoofing over the server
       o  Get the status of authentication over the server
 
-      o  Get access to the logs of the server //VUELA???? FIJARSE SECCIONES DE ESTO ABAJO
-
    
    The associated CMD values for Alterations request are the following:
       o  Add a user 
       o  Delete a user 
-      o  Set a new password  /// VUELA ????????????
-      o  Set a user admin privileges ///// VUELA ????????????
       o  Toggle password spoofing in the server
       o  Toggle authentication in the server
     
@@ -91,10 +87,9 @@ Acknowledgments
    o A STATUS field of 0x02 indicates an invalid version
    o A STATUS field of 0x03 indicates a server error
   
-   In case of failure, the server returns a 'failure' (any STATUS value different than 0x00)
-   status, it MUST close the connection.
-   
-In case of succesfull connection (STATUS value 0x00), the session is established.
+   In case of failure, the server MUST close the connection.
+
+   In case of succesfull connection, the session is established.
 
 4.  General request structure
 
@@ -129,19 +124,18 @@ The associated CMD values for Alterations request are the following:
    o  0x02 to toggle password spoofing over POP3 in the server
    o  0x03 to toggle authentication in the server
    
-In case of Ending a connection no CMD value is needed. TODO: AGREGAR COMANDOS DE CMD ACA SI HACEN FALTA
+In case of Ending a connection CMD value is 0x00.
 
 5.  General response structure
 
 Every server response will contain a general base structure as follows 
 (and then according to each request, responses may have additional fields):
 
-TODO: TENDRIA SENTIDO SACAR EL STATUS FIELD Y Q CUANDO HAYA UN ERROR DEVUELVA UN TYPE INEXISTENTE? Y DE ESA FORMA AHORRARNOS EL BYTE DE STATUS (para mi que no)
-                  +----------+
-                  |  STATUS  |
-                  +----------+
-                  |    1     |
-                  +----------+
+            +----------+
+            |  STATUS  |
+            +----------+
+            |    1     |
+            +----------+
 
 STATUS refers to the request status, and its values can be:
 
@@ -149,8 +143,6 @@ STATUS refers to the request status, and its values can be:
    o 0x01 general server failure
    o 0x02 unsupported type
    o 0x03 unsupported command
-
-   TODO:  o  X'09' to X'FF' unassigned --> hace falta aclarar algo con esto? 
 
 6.  GET Commands
 
@@ -168,7 +160,6 @@ STATUS refers to the request status, and its values can be:
 
          Response:
 
-            TODO: PREGUNTAR ESTE
             The list of users command returns content within the following structure:
 
                      +----------+------------+
@@ -177,8 +168,10 @@ STATUS refers to the request status, and its values can be:
                      |    1     |  Variable  |
                      +----------+------------+
 
-            Where:TODO:ESCRIBIR BIEN 
-               o  USRS refers to the user list itself in ASCII charset, where the first byte indicates the username length.
+            Where:
+               o  USRS refers to the user list itself in ASCII charset, 
+                  where each username is preceded by a byte which indicates the username length.
+                  The username list ends with 0x0.
 
 
       6.2   Historic amount of connections
@@ -204,10 +197,9 @@ STATUS refers to the request status, and its values can be:
                      +----------+-------+
             
             Where: 
-            TODO: los 8  bytes son pensados en funcion de escalabilidad pero realmente a nosotros con 2 nos alcanza no?
                o  QTY specifies the amount of bytes transfered.
 
-      6.3   Quantity of current  connections
+      6.3   Quantity of current connections
 
          Request:
 
@@ -229,7 +221,7 @@ STATUS refers to the request status, and its values can be:
                      |    1     |   2   |
                      +----------+-------+
             Where:
-               o  QTY specifies the amount of users listed.
+               o  QTY specifies the amount of users connected.
 
       6.4   Quantity of bytes transfered  
 
@@ -347,66 +339,14 @@ STATUS refers to the request status, and its values can be:
                      | 0x01 |0x01 |  1   | 1 to 255 |
                      +------+-----+------+----------+
 
-               In which TYPE and CMD values are the specified in "General request structure" section and
-               ULEN, UNAME,PLEN, PASSWD and ROLE are the same fields specified in 7.1. 
+               In which ULEN, UNAME,PLEN and PASSWD are the same fields specified in 7.1. 
                It is important to specify that the UNAME value must exist in order to be deleted.
-            
-               o In case authentication is turned off the password field will not be evaluated.
 
             Response: standard response as specified in section 5
 
-      7.3  Set new Password // VUELA ?????? NO ES NECESARIO PERO ESTA BUENA DIJO CODA
+      7.3 Toggle password spoofing
 
             Request:
-
-               To set a  new password for a user, the following  structure is required:
-
-                     +------+-----+------+----------+--------+-------------+
-                     | TYPE | CMD | ULEN |  UNAME   |  PLEN  |   PASSWD    |
-                     +------+-----+------+----------+--------+-------------+
-                     | 0x01 |0x02 |  1   | 1 to 255 |    1   |   1 to 255  |
-                     +------+-----+------+----------+--------+-------------+
-
-               In which TYPE and  CMD values are the specified in "General request structure" section
-               and ULEN and UNAME are the same fields specified in 7.1. 
-               PLEN and PASSWD have the same structure type as PLEN and PASSWD specified in 7.1 but
-               the fields contain the new password specifications.
-               It is important to specify that the UNAME value must exist in order to set new password.
-               
-               o In case authentication is turned off the password field will not be evaluated.
-
-            Response: standard response as specified in section 5
-
-      7.4  Give a user admin priviledges // VUELA ??????? CODA DIJO QUE PARA CAMBIAR ROL NO ES NECESARIO, PODEMOS BORRAR Y VOLVER A AGREGAR USUARIO
-
-            Request:
-               //TODO: ESTO NO SE SI ESTA BIEN, CUALQUIER USUARIO PODRIA HACERSE ADMIN
-
-               To set a  new password for a user, the following  structure is required:
-
-                     +------+-----+------+----------+
-                     | TYPE | CMD | ULEN |  UNAME   |
-                     +------+-----+------+----------+
-                     |0x01  |0x03 |  1   | 1 to 255 |
-                     +------+-----+------+----------+
-
-               In which the fields are the same specified in 7.1.
-
-               // VUELA ????????
-               It is relevant to state that this command can only be excecuted by users with admin role, meaning 
-               that only an admin can make an existing user admin.
-               In any other case, the request will not be evaluated, EXCEPT authentication is turned off. 
-               This case is analogous to the case that an admin user is making the request.
-               //
-
-            Response: standard response as specified in section 5
-
-      7.5 Toggle password spoofing
-
-            Request:
-
-               In order to toggle password spoofing in the server, the client MUST have admin priviledges.
-               This request must contain the following structure:
                
                      +--------+-------+---------------+
                      |  TYPE  |  CMD  |   SPOOFING    |
@@ -414,14 +354,14 @@ STATUS refers to the request status, and its values can be:
                      |  0x01  | 0x04  |       1       |
                      +--------+-------+---------------+
 
-               As it was previously specified, in this case TYPE must be 0x01 and CMD must be 0x04.
+               TYPE must be 0x01 and CMD must be 0x04.
                SPOOFING field values:
                   0x00 to turn spoofing OFF
                   0x01 to turn spoofing ON 
 
             Response: standard response as specified in section 5
    
-      7.6 Toggle authentication in the server
+      7.4 Toggle authentication in the server
 
             Request: 
                
@@ -431,6 +371,7 @@ STATUS refers to the request status, and its values can be:
                      |  0x01  | 0x05  |     1      |
                      +--------+-------+------------+
 
+               TYPE must be 0x01 and CMD must be 0x05.
                AUTH field values:
                   0x00 to turn authentication OFF
                   0x01 to turn authentication ON
