@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "client.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
