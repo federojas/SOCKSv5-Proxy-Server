@@ -113,7 +113,7 @@ static request_state dstport(request_parser * p, uint8_t c) {
     request_state next_state = REQUEST_DSTPORT;
     ((uint8_t *)&(p->request->dest_port))[p->readBytes++] = c; 
     if(remaining_is_done(p)) {
-        p->request->dest_port = htons(p->request->dest_port);
+        //p->request->dest_port = htons(p->request->dest_port);
         next_state = REQUEST_DONE;
     } 
     return next_state;

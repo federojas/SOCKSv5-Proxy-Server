@@ -71,7 +71,7 @@ struct request_st {
 struct copy{
     int *fd;
     fd_interest duplex;
-    buffer               *rb, *wb;
+    buffer *rb, *wb;
     struct copy *other; 
 };
 struct connecting{
@@ -100,6 +100,7 @@ static void copy_init(const unsigned state, struct selector_key *key);
 static unsigned copy_read(struct selector_key *key);
 static unsigned copy_write(struct selector_key *key);
 static struct copy *fd_copy(struct selector_key *key);
+static fd_interest copy_compute_interests(fd_selector s, struct copy *d);
 //---------------------------------------------------------------
 
 /** definicionn de handlers para cada estado */
@@ -974,6 +975,9 @@ static unsigned copy_read(struct selector_key *key)
     {
         buffer_write_adv(b, n);
     }
+
+    copy_compute_interests(key->s, d);
+    copy_compute_interests(key->s, d->other);
     if (d->duplex == OP_NOOP)
     {
         ret = DONE;
@@ -1007,9 +1011,35 @@ static unsigned copy_write(struct selector_key *key)
         buffer_read_adv(b, n);
     }
 
+    copy_compute_interests(key->s, d);
+    copy_compute_interests(key->s, d->other);
+    
     if (d->duplex == OP_NOOP)
     {
         ret = DONE;
+    }
+
+    return ret;
+}
+
+static fd_interest copy_compute_interests(fd_selector s, struct copy *d)
+{
+    fd_interest ret = OP_NOOP;
+
+    if(*d->fd != -1) 
+    {
+        if (((d->duplex & OP_READ) && buffer_can_write(d->rb)) )
+        {
+            ret |= OP_READ;
+        }
+        if ((d->duplex & OP_WRITE) && buffer_can_read(d->wb) )
+        {
+            ret |= OP_WRITE;
+        }
+        if (SELECTOR_SUCCESS != selector_set_interest(s, *d->fd, ret))
+        {
+            abort();
+        }
     }
 
     return ret;
