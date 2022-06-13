@@ -4,7 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include "buffer.h"
+#include "logger.h"
 
 static const int IPV4_LENGTH = 4;
 static const int IPV6_LENGTH = 16;
@@ -51,7 +54,6 @@ typedef enum request_state {
  
     REQUEST_DONE,
     
-    // TODO: Diferenciar los estados de error para tener una mejor descripcion
     REQUEST_TRAP,
     REQUEST_TRAP_UNSUPPORTED_VERSION,
     REQUEST_TRAP_UNSUPPORTED_ATYP,
@@ -80,10 +82,18 @@ void request_parser_init(request_parser *p);
 
 enum request_state request_parser_feed(request_parser *p, uint8_t byte);
 
-enum request_state request_parser_consume(buffer *b, request_parser *p, bool *errored);
+bool request_parser_consume(buffer *b, request_parser *p, bool *errored);
 
 bool request_parser_is_done(enum request_state state, bool *errored);
 
 char * request_parser_error_report(enum request_state state);
+
+void request_close(struct request_parser *p);
+
+extern int request_marshall(buffer *b, const enum socks5_response_status status);
+
+enum socks5_response_status errno_to_socks(int e);
+
+enum socks5_response_status cmd_resolve(struct socks5_request * request, struct sockaddr **originaddr, socklen_t *originlen, int * domain);
 
 #endif

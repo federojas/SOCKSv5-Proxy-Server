@@ -2,13 +2,15 @@
 *
 *
 */
-#ifndef SOCKS5_HELLO_PARSER_H_
-#define SOCKS5_HELLO_PARSER_H_
+#ifndef HELLO_PARSER_H
+#define HELLO_PARSER_H
 #include <stdint.h>
 #include <stdbool.h>
 #include "buffer.h"
 
 static const uint8_t METHOD_NO_AUTH_REQ = 0x00;
+static const uint8_t METHOD_AUTH_REQ = 0x02;
+
 static const uint8_t METHOD_NO_ACCEPTABLE_METHODS = 0xFF;
 
 enum hello_parser_state {
@@ -26,7 +28,7 @@ typedef struct hello_parser {
     uint8_t methods_remaining;
 } hello_parser;
 
-void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data);
+void hello_parser_init(hello_parser *p);
 
 enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte);
 
@@ -35,5 +37,9 @@ bool hello_parser_consume(buffer *b, hello_parser *p, bool *errored);
 bool hello_parser_is_done(enum hello_parser_state state, bool *errored);
 
 char *hello_parser_error_report(enum hello_parser_state state);
+
+char hello_parser_marshall(buffer *b, const uint8_t method);
+
+extern void hello_parser_close(struct hello_parser *p); 
 
 #endif

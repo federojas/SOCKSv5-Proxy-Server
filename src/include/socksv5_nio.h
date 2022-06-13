@@ -2,7 +2,7 @@
 #define SOCKSV5_NIO_H
 
 #include <netdb.h>
-#include "selector.h"
+#include "./selector.h"
 
 #define ADDR_CHAR_SIZE 64
 

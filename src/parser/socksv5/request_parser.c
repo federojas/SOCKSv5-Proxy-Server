@@ -2,9 +2,10 @@
 #include <arpa/inet.h>
 #include "request_parser.h"
 #include "socks_utils.h"
+#include <errno.h>
 
 
-// TODO: mejorar estilo del codigo
+// TODO: mejorar estilo del codigo USAR TABLA DE FUNCIONES, TODOS LOS PARSERS
 static void remaining_set(request_parser *p, const int remainingBytes) {
     p->readBytes = 0;
     p->totalBytes = remainingBytes;
@@ -28,7 +29,7 @@ static request_state version(request_parser *p, const uint8_t c) {
 }
 
 static request_state cmd(request_parser *p, const uint8_t c) {
-    // TODO: COMANDO INVALIDO 
+    // TODO: COMANDO INVALIDO: CATCHEAR AL PROCESAR, NO AFECTA EL PARSING 
     p->request->cmd = c;
     return REQUEST_RSV;
 }
@@ -75,7 +76,6 @@ static request_state dstaddr_fqdn(request_parser *p, const uint8_t c) {
 
 static request_state dstaddr(request_parser *p, const uint8_t c) {
     request_state next_state;
-    p->request->dest_addr_type = c;
     switch(p->request->dest_addr_type) {
         case SOCKS5_REQ_ADDRTYPE_IPV4:
             p->request->dest_addr.ipv4.sin_addr.s_addr = (p->request->dest_addr.ipv4.sin_addr.s_addr << 8) + c;
@@ -94,7 +94,7 @@ static request_state dstaddr(request_parser *p, const uint8_t c) {
             break;
         default:
             // con cualquier otro caso pasamos al trampa
-            next_state = REQUEST_TRAP;
+            next_state = REQUEST_TRAP_UNSUPPORTED_ATYP;
             break;
     }
 
@@ -113,7 +113,7 @@ static request_state dstport(request_parser * p, uint8_t c) {
     request_state next_state = REQUEST_DSTPORT;
     ((uint8_t *)&(p->request->dest_port))[p->readBytes++] = c; 
     if(remaining_is_done(p)) {
-        p->request->dest_port = htons(p->request->dest_port);
+        //p->request->dest_port = htons(p->request->dest_port);
         next_state = REQUEST_DONE;
     } 
     return next_state;
@@ -124,48 +124,49 @@ void request_parser_init(request_parser *p) {
 }
 
 request_state request_parser_feed(request_parser *p, uint8_t byte) {
-    request_state next;
+    
     switch (p->current_state)
     {
         case REQUEST_VERSION:
-            next = version(p,byte);
+            p->current_state = version(p,byte);
             break;
         case REQUEST_CMD:
-            next = cmd(p,byte);
+            p->current_state = cmd(p,byte);
             break;
         case REQUEST_RSV:
-            next = REQUEST_ATYP;
+            p->current_state = REQUEST_ATYP;
             break;
         case REQUEST_ATYP:
-            next = atyp(p,byte);
+            p->current_state = atyp(p,byte);
             break;
         case REQUEST_DSTADDR_FQDN:
-            next = dstaddr_fqdn(p,byte);
+            p->current_state = dstaddr_fqdn(p,byte);
             break;
         case REQUEST_DSTADDR:
-            next = dstaddr(p,byte);
+            p->current_state = dstaddr(p,byte);
             break;
         case REQUEST_DSTPORT:
-            next = dstport(p,byte);
+            p->current_state = dstport(p,byte);
             break;
         case REQUEST_DONE:
-            next = p->current_state;
+            break;
+        case REQUEST_TRAP:
             break;
         default:
-            next = REQUEST_TRAP;
-            break;
+            abort();
+        break;
     }
-
-    return p->current_state = next;
+    
+    return p->current_state;
 }
 
 
-request_state request_parser_consume(buffer *b, request_parser *p, bool *errored) {
+bool request_parser_consume(buffer *b, request_parser *p, bool *errored) {
 
     uint8_t byte;
     while(!request_parser_is_done(p->current_state, errored) && buffer_can_read(b)) {
         byte = buffer_read(b);
-        request_parser_feed(p, byte); 
+        p->current_state = request_parser_feed(p, byte); 
     }
 
     return request_parser_is_done(p->current_state, errored);
@@ -190,6 +191,10 @@ bool request_parser_is_done(enum request_state state, bool *errored) {
         case REQUEST_DSTPORT:
             return false;
             break;
+
+        case REQUEST_TRAP_UNSUPPORTED_VERSION:
+        case REQUEST_TRAP_UNSUPPORTED_ATYP: 
+        case REQUEST_TRAP:   
         default:
             if(errored != NULL)
                 *errored = true;
@@ -213,10 +218,108 @@ char * request_parser_error_report(request_state state){
         case REQUEST_DSTPORT:
             return "Request-parser: no error";
         break;
-        default:
 
+        case REQUEST_TRAP_UNSUPPORTED_VERSION:
+            return "Request-parser: unsupported version";
+        break;
+        case REQUEST_TRAP_UNSUPPORTED_ATYP:
+            return "Request-parser: unsupported address type";
+        break;
+        default:
             return "Request-parser: on trap state";
         break;
     }
         
+}
+void request_parser_close(struct request_parser *p) {
+    //TODO: MANEJAR ESTO 
+}
+
+extern int request_marshall(buffer *b, const enum socks5_response_status status) {
+    size_t n;
+    uint8_t *buff=buffer_write_ptr(b,&n);
+    if(n<10) {
+        return -1;
+    }
+    buff[0] = SOCKS5_VERSION;
+    buff[1] = status;
+    buff[2] = 0x00;
+    buff[3] = SOCKS5_REQ_ADDRTYPE_IPV4;
+    buff[4] = 0x00;
+    buff[5] = 0x00;
+    buff[6] = 0x00;
+    buff[7] = 0x00;
+    buff[8] = 0x00;
+    buff[9] = 0x00;
+    
+    buffer_write_adv(b,10);
+    return 10;
+}
+
+enum socks5_response_status errno_to_socks(int e) {
+    enum socks5_response_status ret = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+    switch(e){
+        case 0:
+            ret = SOCKS5_STATUS_SUCCEED;
+            break;
+        case ECONNREFUSED:
+            ret = SOCKS5_STATUS_CONN_REFUSED;
+            break;
+        case EHOSTUNREACH:
+            ret = SOCKS5_STATUS_HOST_UNREACHABLE;
+            break;
+        case ENETUNREACH:
+            ret = SOCKS5_STATUS_NETWORK_UNREACHABLE;
+            break;
+        case ETIMEDOUT:
+            ret = SOCKS5_STATUS_TTL_EXPIRED;
+            break;
+    }
+    return ret;
+}
+
+enum socks5_response_status cmd_resolve(struct socks5_request *request, struct sockaddr **originaddr, socklen_t *originlen, int *domain) {
+    enum socks5_response_status ret = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+
+    *domain = AF_INET;
+    struct sockaddr *addr = 0x00;
+    socklen_t addrlen = 0;
+
+    switch (request->dest_addr_type)
+    {
+    case SOCKS5_REQ_ADDRTYPE_DOMAIN:
+    {
+        struct hostent *hp = gethostbyname(request->dest_addr.fqdn);
+        if (hp == 0) {
+            memset(&request->dest_addr, 0x00, sizeof(request->dest_addr));
+            break;
+        }
+        request->dest_addr.ipv4.sin_family = hp->h_addrtype;
+        memcpy((char *)&request->dest_addr.ipv4.sin_addr, *hp->h_addr_list, hp->h_length);
+    }
+
+    case SOCKS5_REQ_ADDRTYPE_IPV4: 
+    {
+        *domain = AF_INET;
+        addr = (struct sockaddr *)&(request->dest_addr.ipv4);
+        addrlen = sizeof(request->dest_addr.ipv4);
+        request->dest_addr.ipv4.sin_port = request->dest_port;
+        break;
+    }
+    case SOCKS5_REQ_ADDRTYPE_IPV6:
+    {
+        *domain = AF_INET6;
+        addr = (struct sockaddr *)&(request->dest_addr.ipv6);
+        addrlen = sizeof(request->dest_addr.ipv6);
+        request->dest_addr.ipv6.sin6_port = request->dest_port;
+        break;
+    }
+    default:
+        return SOCKS5_STATUS_ADDRTYPE_NOT_SUPPORTED;
+    }
+
+    *originaddr = addr;
+    *originlen = addrlen;
+
+    return ret;
 }

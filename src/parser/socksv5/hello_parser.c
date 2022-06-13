@@ -2,11 +2,16 @@
 #include "logger.h"
 #include "socks_utils.h"
 
-void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data) {
-    p->current_state = HELLO_VERSION;
-    p->on_auth_method = on_auth_method;
-    p->data = data;
-    p->methods_remaining = 0;
+// void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data) {
+//     p->current_state = HELLO_VERSION;
+//     p->on_auth_method = on_auth_method;
+//     p->data = data;
+//     p->methods_remaining = 0;
+// }
+
+void hello_parser_init(hello_parser *p){
+    p->current_state=HELLO_VERSION;
+    p->methods_remaining=0;
 }
 
 enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte) {
@@ -40,7 +45,7 @@ enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte) {
         break;
 
         default:
-            log(DEBUG,"Unknown state on hello parser");
+            log_print(DEBUG,"Unknown state on hello parser");
             abort();
         break;
     }
@@ -54,7 +59,7 @@ bool hello_parser_consume(buffer *b, hello_parser *p, bool *errored) {
 
     while(!hello_parser_is_done(p->current_state, errored) && buffer_can_read(b)) {
         byte = buffer_read(b);
-        hello_parser_feed(p, byte); 
+        p->current_state = hello_parser_feed(p, byte); 
     }
 
     return hello_parser_is_done(p->current_state, errored);
@@ -83,7 +88,24 @@ char * hello_parser_error_report(enum hello_parser_state state) {
 
         case HELLO_TRAP:
         default:
-            return "Hello-parser: on trap state";
+            return "Hello-parser: unsupported version";
         break;
     }
+}
+
+char hello_parser_marshall(buffer *b, const uint8_t method){
+    size_t n;
+    uint8_t *buff=buffer_write_ptr(b,&n);
+    if(n<2){
+        return -1;
+    }
+    buff[0]=0x05;
+    buff[1]=method;
+    buffer_write_adv(b,2);
+    return 2;
+}
+
+extern void hello_parser_close(struct hello_parser *p){
+    /* no hay nada que liberar*/
+    //TODO: REVISAR
 }

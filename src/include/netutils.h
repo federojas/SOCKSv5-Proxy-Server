@@ -5,11 +5,23 @@
 
 #include "buffer.h"
 
+typedef enum addr_type {
+    ADDR_IPV4,
+    ADDR_IPV6,
+    ADDR_DOMAIN,
+} addr_type;
+
+typedef union addr_storage {
+    char fqdn[0xFF];
+    struct sockaddr_storage address_storage;
+} addr_storage;
+
+//preload port before getting address representation
 typedef struct address_data {
-    ip_type type;
+    addr_type addr_type;
     in_port_t port;
     socklen_t addr_len;
-    address_storage addr;
+    addr_storage addr_storage;
     int domain;
 } address_data;
 
