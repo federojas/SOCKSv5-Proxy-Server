@@ -23,7 +23,7 @@ port(const char *s) {
 }
 
 static void
-user(char *s, struct users *user) {
+user(char *s, struct user_info *user) {
     char *p = strchr(s, ':');
     if(p == NULL) {
         fprintf(stderr, "password not found\n");
@@ -31,8 +31,8 @@ user(char *s, struct users *user) {
     } else {
         *p = 0;
         p++;
-        user->name = s;
-        user->pass = p;
+        user->username = s;
+        user->password = p;
     }
 
 }
@@ -78,6 +78,14 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
 
     while (true) {
         int option_index = 0;
+        static struct option long_options[] = {
+            { "doh-ip",    required_argument, 0, 0xD001 },
+            { "doh-port",  required_argument, 0, 0xD002 },
+            { "doh-host",  required_argument, 0, 0xD003 },
+            { "doh-path",  required_argument, 0, 0xD004 },
+            { "doh-query", required_argument, 0, 0xD005 },
+            { 0,           0,                 0, 0 }
+        };
 
         c = getopt_long(argc, argv, "hl:L:Np:P:u:v", long_options, &option_index);
         if (c == -1)
@@ -129,4 +137,10 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
         fprintf(stderr, "\n");
         exit(1);
     }
+}
+
+
+
+int user_registerd(char * user, char * pass) {
+    return strcmp(user, "fico") == 0 && strcmp(pass, "1234");
 }

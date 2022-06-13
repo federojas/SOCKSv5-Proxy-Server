@@ -15,42 +15,51 @@ enum auth_parser_state auth_parser_feed(auth_parser *p, const uint8_t byte) {
             }    
             else {
                 p->current_state = AUTH_TRAP;
-                p->error_cause = AUTH_INVALID_VERSION;
+                p->trap_cause = AUTH_INVALID_VERSION;
             }
         break;
         case AUTH_USERNAME_LEN:
             if(byte < 1) {
-                p->error_cause = AUTH_INVALID_USERNAME_LEN
+                p->trap_cause = AUTH_INVALID_USERNAME_LEN;
                 p->current_state = AUTH_TRAP;
             } else {
-                p->username_len = byte;
+                p->username.username_len = byte;
                 p->credentials_pointer = 0;
                 p->current_state = AUTH_USERNAME;
             }
         break; 
         case AUTH_USERNAME:
-            p->username[p->credentials_pointer++] = (char) byte;
-            if(p->credentials_pointer == p->username_len) {
-                p->username[p->credentialCharPointer] = 0;
+            p->username.username[p->credentials_pointer++] = (char) byte;
+            if(p->credentials_pointer == p->username.username_len) {
+                p->username.username[p->credentials_pointer] = 0;
                 p->current_state = AUTH_PASSWORD_LEN;
             }
         break; 
         case AUTH_PASSWORD_LEN:
             if(byte < 1) {
-                p->error_cause = AUTH_INVALID_PASSWORD_LEN
+                p->trap_cause = AUTH_INVALID_PASSWORD_LEN;
                 p->current_state = AUTH_TRAP;
             } else {
-                p->password_len = byte;
+                p->password.password_len = byte;
                 p->credentials_pointer = 0;
                 p->current_state = AUTH_PASSWORD;
             }
         break; 
         case AUTH_PASSWORD:
-            p->password[p->credentials_pointer++] = (char) byte;
-            if(p->credentials_pointer == p->password_len) {
-                p->password[p->credentials_pointer] = 0;
+            p->password.password[p->credentials_pointer++] = (char) byte;
+            if(p->credentials_pointer == p->password.password_len) {
+                p->password.password[p->credentials_pointer] = 0;
                 p->current_state = AUTH_DONE;
             }
+        break;
+        case AUTH_DONE:
+        case AUTH_TRAP:
+            // Nothing to do
+        break;
+
+        default:
+            log_print(DEBUG,"Unknown state on auth parser");
+            abort();
         break;
     }
     return p->current_state;
@@ -79,8 +88,8 @@ bool auth_parser_is_done(enum auth_parser_state state, bool *errored) {
     return false;
 }
 
-char * auth_parser_error_report(enum auth_trap_cause error_cause) {
-    switch(error_cause) {
+char * auth_parser_error_report(enum auth_trap_cause trap_cause) {
+    switch(trap_cause) {
         case AUTH_VALID:
             return "Auth-parser: no error";
         break;
@@ -99,4 +108,17 @@ char * auth_parser_error_report(enum auth_trap_cause error_cause) {
 
         default: return "Auth-parser: trap state"; break;
     }
+}
+
+int auth_marshall(buffer *b, const uint8_t status, uint8_t version) {
+    size_t n;
+    uint8_t *buff = buffer_write_ptr(b, &n);
+    if (n < 2) {
+        return -1;
+    }
+    buff[0] = version;
+    buff[1] = status;
+
+    buffer_write_adv(b, 2);
+    return 2; 
 }
