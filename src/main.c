@@ -12,6 +12,7 @@
 #include "selector.h"
 #include "logger.h"
 #include "socksv5_nio.h"
+#include "args.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
@@ -19,6 +20,7 @@
 #define MAX_ADDR_BUFFER 128
 
 static bool done = false;
+extern struct socks5args socks5args;
 // static char addrBuffer[MAX_ADDR_BUFFER];
 
 static void
@@ -84,7 +86,7 @@ void write_handler(struct selector_key * key){
 //     .handle_close = NULL
 // };
 
-int main(const int argc, const char **argv) {
+int main(const int argc, char **argv) {
     unsigned port = PORT;
 
     if(argc == 1) {
@@ -107,6 +109,8 @@ int main(const int argc, const char **argv) {
 
     // no tenemos nada que leer de stdin
     close(0);
+
+    parse_args(argc, argv, &socks5args);
 
     const char       *err_msg = NULL;
     selector_status   ss      = SELECTOR_SUCCESS;

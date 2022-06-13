@@ -23,13 +23,13 @@ struct socks5args {
     struct user_info    users[MAX_USERS];
 };
 
+
 /**
  * Interpreta la linea de comandos (argc, argv) llenando
  * args con defaults o la seleccion humana. Puede cortar
  * la ejecuciÃ³n.
  */
-void 
-parse_args(const int argc, char **argv, struct socks5args *args);
+void parse_args(const int argc, char **argv, struct socks5args *args);
 
 int user_registerd(char * user, char * pass);
 

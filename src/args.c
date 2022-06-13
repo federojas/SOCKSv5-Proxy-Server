@@ -34,7 +34,6 @@ user(char *s, struct user_info *user) {
         user->username = s;
         user->password = p;
     }
-
 }
 
 static void
@@ -142,5 +141,6 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
 
 
 int user_registerd(char * user, char * pass) {
+    fprintf(stdout, "\n\nLLEGUE\n\n");
     return strcmp(user, "fico") == 0 && strcmp(pass, "1234");
 }
