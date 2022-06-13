@@ -1,6 +1,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#define MAX_CREDENTIAL_SIZE 255 
+#include <stdbool.h>
 //definimos el tipo de cliente para una request 
 typedef enum client_type{
 
@@ -28,5 +30,11 @@ typedef enum t_alter_cmd{
     CMD_TOGGLE_AUTH                 =0X03,
 }t_alter_cmd;
 
+typedef struct user_info{
+    char username[MAX_CREDENTIAL_SIZE];
+    char password[MAX_CREDENTIAL_SIZE];
+    bool isAdmin;
+}user_info;
 
+typedef user_info *user_info_p;
 #endif
