@@ -884,26 +884,27 @@ request_connecting(struct selector_key *key)
 {
     int error;
     socklen_t len = sizeof(error);
-    struct connecting *d = &ATTACHMENT(key)->orig.conn;
+    // struct connecting *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *d = ATTACHMENT(key);
 
     if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-        *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+        *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     } else {
         if (error == 0) {
-            *d->status = SOCKS5_STATUS_SUCCEED;
-            *d->origin_fd = key->fd;
+            *d->orig.conn.status = SOCKS5_STATUS_SUCCEED;
+            *d->orig.conn.origin_fd = key->fd;
         } else {
-            *d->status = errno_to_socks(error);
+            *d->orig.conn.status = errno_to_socks(error);
         }
     }
 
-    if(-1 == request_marshall(d->wb, *d->status)) {
-         *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+    if(-1 == request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
+         *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
          abort(); // el buffer tiene que ser mas grande en la variable
     } 
 
     selector_status s = 0;
-    s |= selector_set_interest      (key->s,*d->client_fd, OP_WRITE);
+    s |= selector_set_interest      (key->s,*d->orig.conn.client_fd, OP_WRITE);
     s |= selector_set_interest_key  (key, OP_NOOP);
 
     // Mandamos la respuesta al cliente
