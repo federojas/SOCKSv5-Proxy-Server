@@ -41,8 +41,8 @@ user(char *s, struct user_info *user) {
 static void
 version(void) {
     fprintf(stderr, "socks5v version 0.0\n"
-                    "ITBA Protocolos de ComunicaciÃ³n 2020/1 -- Grupo X\n"
-                    "AQUI VA LA LICENCIA\n");
+                    "ITBA Protocolos de ComunicaciÃ³n 2022/1 -- Grupo 3\n"
+                    "DOG SOFTWARE LICENSED PRODUCT\n");
 }
 
 static void

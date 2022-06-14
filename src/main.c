@@ -110,7 +110,7 @@ int main(const int argc, char **argv) {
     // no tenemos nada que leer de stdin
     close(0);
 
-    parse_args(argc, argv, &socks5args);
+    // parse_args(argc, argv, &socks5args);
 
     const char       *err_msg = NULL;
     selector_status   ss      = SELECTOR_SUCCESS;
