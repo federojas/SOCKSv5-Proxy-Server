@@ -89,28 +89,29 @@ void write_handler(struct selector_key * key){
 int main(const int argc, char **argv) {
     unsigned port = PORT;
 
-    if(argc == 1) {
-        // utilizamos el default
-    } else if(argc == 2) {
-        char *end     = 0;
-        const long sl = strtol(argv[1], &end, 10);
+    // if(argc == 1) {
+    //     // utilizamos el default
+    // } else if(argc == 2) {
+    //     char *end     = 0;
+    //     const long sl = strtol(argv[1], &end, 10);
 
-        if (end == argv[1] || '\0' != *end 
-           || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
-           || sl < 0 || sl > USHRT_MAX) {
-            fprintf(stderr, "port should be an integer: %s\n", argv[1]);
-            return 1;
-        }
-        port = sl;
-    } else {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return 1;
-    }
+    //     if (end == argv[1] || '\0' != *end 
+    //        || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
+    //        || sl < 0 || sl > USHRT_MAX) {
+    //         fprintf(stderr, "port should be an integer: %s\n", argv[1]);
+    //         return 1;
+    //     }
+    //     port = sl;
+    // } else {
+    //     fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+    //     return 1;
+    // }
 
     // no tenemos nada que leer de stdin
     close(0);
 
-    // parse_args(argc, argv, &socks5args);
+    parse_args(argc, argv, &socks5args);
+    
 
     const char       *err_msg = NULL;
     selector_status   ss      = SELECTOR_SUCCESS;
