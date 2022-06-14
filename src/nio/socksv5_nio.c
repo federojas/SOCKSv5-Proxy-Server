@@ -20,6 +20,7 @@
 #include "socksv5_nio.h"
 #include "netutils.h"
 #include "stm.h"
+#include "logger.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
@@ -206,6 +207,7 @@ struct socks5 {
 
     /** buffers **/
     //TODOS NUMEROS DIDACTICOS, HAY QUE LLEGAR A NUESTRO TAMAÑO DE BUFFER IDEAL Y JUSTIFICAR (CODA)
+    //PARA QUE SON ESTOS RAW BUFF ?????????????
     uint8_t raw_buff_a[BUFFER_SIZE], raw_buff_b[BUFFER_SIZE];
     buffer read_buffer, write_buffer;
 
@@ -258,8 +260,21 @@ socksv5_pool_destroy(void) {
     struct socks5 *next, *s;
     for(s = pool; s != NULL ; s = next) {
         next = s->next;
+
+        log_print(DEBUG,"Closing connection");
+
+        close(s->origin_fd);
+        close(s->client_fd);
+
+        //TODO MIRAR ESTO (TODA LA FUNCION Y ESTOS COMENTADOS)
+        // free(s->read_buffer->data);
+        // free(s->read_buffer);
+        // free(s->write_buffer->data);
+        // free(s->write_buffer);
+        //free(s->current_command);
         free(s);
     }
+    pool = NULL;
 }
 
 /** obtiene el struct (socks5 *) desde la llave de selecciÃ³n  */

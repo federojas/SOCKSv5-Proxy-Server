@@ -8,6 +8,8 @@
 
 #include "buffer.h"
 
+typedef struct buffer buffer;
+
 inline void
 buffer_reset(buffer *b) {
     b->read  = b->data;
