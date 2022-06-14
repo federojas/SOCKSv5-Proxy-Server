@@ -2,21 +2,15 @@
 #include "logger.h"
 #include "socks_utils.h"
 
-//TODO AUTH
-// void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data) {
-//     p->current_state = HELLO_VERSION;
-//     p->on_auth_method = on_auth_method;
-//     p->data = data;
-//     p->methods_remaining = 0;
-// }
 
-void hello_parser_init(hello_parser *p){
-    p->current_state=HELLO_VERSION;
-    p->methods_remaining=0;
+void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method)) {
+    p->current_state = HELLO_VERSION;
+    p->on_auth_method = on_auth_method;
+    p->methods_remaining = 0;
 }
 
 enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte) {
-
+    // 53012
     switch(p->current_state) {
 
         case HELLO_VERSION:
@@ -32,7 +26,6 @@ enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte) {
         break;
 
         case HELLO_METHODS:
-           
             if(p->on_auth_method != NULL)
                 p->on_auth_method(p,byte);
             p->methods_remaining--;

@@ -26,6 +26,7 @@
 static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
 static struct socks5 * pool = 0;
+extern struct socks5args socks5args;
 
 /** maquina de estados general */
 enum socks_v5state {
@@ -115,7 +116,7 @@ static unsigned request_connecting(struct selector_key *key);
 static unsigned request_write(struct selector_key *key);
 static void copy_init(const unsigned state, struct selector_key *key);
 static unsigned copy_read(struct selector_key *key);
-static unsigned copy_write(struct selector_key *key);
+static unsigned copy_write(struct selector_key *key); 
 static struct copy *fd_copy(struct selector_key *key);
 static fd_interest copy_compute_interests(fd_selector s, struct copy *d);
 //---------------------------------------------------------------
@@ -440,15 +441,15 @@ fail:
     socks5_destroy(state);
 }
 
-
-/** callback del parser utilizado en `read_hello' */
-
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t *selected  = p->data;
-
-    if((METHOD_NO_AUTH_REQ == method)||(METHOD_AUTH_REQ == method)) {
-       *selected = method;
+    if(socks5args.stats.authentication == 1) {
+        if(method == METHOD_AUTH_REQ) 
+            *selected = method;
+    } else {
+        if((method == METHOD_NO_AUTH_REQ) || (method == METHOD_AUTH_REQ)) 
+            *selected = method;
     }
 }
 
@@ -456,14 +457,11 @@ on_hello_method(struct hello_parser *p, const uint8_t method) {
 /** inicializa las variables de los estados HELLO_â€¦ */
 static void hello_read_init(const unsigned state, struct selector_key *key) {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
-
-    d->rb                              = &(ATTACHMENT(key)->read_buffer);
-    d->wb                              = &(ATTACHMENT(key)->write_buffer);
-    hello_parser_init(&d->parser);
-
-    d->parser.data                     = &d->method;
-    // TODO: agregar on auth method
-    d->parser.on_auth_method = on_hello_method, hello_parser_init(&d->parser);
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->wb = &(ATTACHMENT(key)->write_buffer);
+    d->parser.data = &d->method;
+    *((uint8_t *)d->parser.data) = METHOD_NO_ACCEPTABLE_METHODS;
+    hello_parser_init(&d->parser, on_hello_method);
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
@@ -499,7 +497,7 @@ hello_process(const struct hello_st* d) {
     unsigned ret = HELLO_WRITE;
 
     uint8_t m = d->method;
-    // const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
+
     if (-1 == hello_parser_marshall(d->wb, m)) {
         ret  = ERROR;
     }

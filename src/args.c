@@ -76,7 +76,7 @@ usage(const char *progname) {
 void 
 parse_args(const int argc, char **argv, struct socks5args *args) {
 
-    memset(args, 0, sizeof(struct socks5args)); // sobre todo para setear en null los punteros de users
+    memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
     
     args->version = DEFAULT_VERSION_NUMBER;
     args->nusers = 0;
