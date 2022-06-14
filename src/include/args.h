@@ -2,6 +2,7 @@
 #define ARGS_H_kFlmYm1tW9p5npzDr2opQJ9jM8
 
 #include <stdbool.h>
+#include "statistics.h"
 
 #define MAX_USERS 10
 #define MAX_CRED_SIZE 255
@@ -15,12 +16,20 @@ struct user_info {
 struct socks5args {
     char           *socks_addr;
     unsigned short  socks_port;
+    bool            socks_on_both;
 
     char *          mng_addr;
     unsigned short  mng_port;
+    bool            mng_on_both;
 
-    bool            disectors_enabled;
+    char *              origin_addr;
+    unsigned short      origin_port;
+
+
+    
+
     struct user_info    users[MAX_USERS];
+    struct socks5Stats stats;
 };
 
 

@@ -18,7 +18,8 @@ typedef struct socks5Stats{
     int usr_amount;
 
 
-}socks5Stats;
+} socks5Stats;
+
 extern socks5Stats stats;
 
 void stats_init(void);

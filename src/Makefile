@@ -6,7 +6,7 @@ CFLAGS= -g --std=c11 -fsanitize=address -Wall -Wextra -Werror -Wno-unused-parame
 #UTILS=./logger/logger.o ./net_utils/util.o
 #SERVER_SOURCES=tcpTransparentServer.o ./net_utils/tcpServerUtil.o ./net_utils/tcpClientUtil.o
 
-OBJECTS= ./logger/logger.o ./net_utils/util.o ./selector/selector.o ./stm/stm.o ./nio/socksv5_nio.o ./buffer/buffer.o ./parser/socksv5/hello_parser.o  ./parser/socksv5/auth_parser.o ./parser/socksv5/request_parser.o 
+OBJECTS= ./logger/logger.o ./net_utils/util.o ./selector/selector.o ./stm/stm.o ./nio/socksv5_nio.o ./buffer/buffer.o ./parser/socksv5/hello_parser.o  ./parser/socksv5/auth_parser.o ./parser/socksv5/request_parser.o ./net_utils/netutils.o
 #all:main transparent
 #all: transparent
 #TODO: LOS LDFLAGS NO ANDAN

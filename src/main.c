@@ -15,6 +15,7 @@
 #include "args.h"
 #include "netutils.h"
 #include "buffer.h"
+#include "statistics.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
@@ -250,17 +251,16 @@ int main(const int argc, char **argv) {
         .handle_close      = NULL, // nada que liberar
     };
 
-    //manager handler FALTA DAX
+    //manager handler FALTA
     // const struct fd_handler manager = {
     //     .handle_read       = manager_passive_accept,
     //     .handle_write      = NULL,
     //     .handle_close      = NULL, // nada que liberar
     // };
 
-    //manager state FALTA DAX
     //Origen para selector
-    //origin_address.port = socks5state.origin_address
-    //get_address_representation(&origin_representation, pop3_proxy_state.origin_addr);
+    origin_address.port = socks5args.origin_port;
+    get_address_data(&origin_address, socks5args.origin_addr);
 
     for (int i = 0; i < proxy_socks5_size; i++) {
         ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ, &origin_address);
@@ -340,16 +340,15 @@ static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
 
     // Default config, escuchar en server proxy y en manager
 
-    // NECESITO EL STATE QUE HIZO DAX EN OTRA BRANCH
-    // if (strcmp(string_addr,"0.0.0.0") == 0 && addr_type == ADDR_IPV6 && !manager_socket
-    //         && socks5state.proxy_on_both ){
-    //     string_addr = "0::0";
-    // }
+    if (strcmp(string_addr,"0.0.0.0") == 0 && addr_type == ADDR_IPV6 && !manager_socket
+            && socks5args.socks_on_both ) {
+        string_addr = "0::0";
+    }
 
-    // if (strcmp(string_addr,"127.0.0.1") == 0 && addr_type == ADDR_IPV6 && manager_socket
-    //         && socks5state.mng_on_both ){
-    //     string_addr = "::1";
-    // }
+    if (strcmp(string_addr,"127.0.0.1") == 0 && addr_type == ADDR_IPV6 && manager_socket
+            && socks5args.mng_on_both ) {
+        string_addr = "::1";
+    }
 
     new_socket = socket(network_flag, socket_type, protocol);
     if(new_socket < 0) {

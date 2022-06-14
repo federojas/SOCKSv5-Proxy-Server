@@ -99,3 +99,44 @@ sock_blocking_copy(const int source, const int dest) {
     return ret;
 }
 
+void get_address_data(address_data *address, const char * ip) {
+
+    memset(&(address->addr_storage.address_storage), 0, sizeof(address->addr_storage.address_storage));
+    address->addr_type = ADDR_IPV4;
+    address->domain = AF_INET;
+    address->addr_len = sizeof(struct sockaddr_in);
+
+    struct sockaddr_in try_ipv4;
+    memset(&(try_ipv4), 0, sizeof(try_ipv4));
+    try_ipv4.sin_family = AF_INET;
+    int result = 0;
+
+    //pruebo IPv4
+    if ((result = inet_pton(AF_INET, ip, &try_ipv4.sin_addr.s_addr)) <= 0) {
+
+        //cambio a IPv6 si no era IPv4
+        address->addr_type = ADDR_IPV6;
+        address->domain = AF_INET6;
+        address->addr_len = sizeof(struct sockaddr_in6);
+
+        struct sockaddr_in6 try_ipv6;
+        memset(&(try_ipv6), 0, sizeof(try_ipv6));
+        try_ipv6.sin6_family = AF_INET6;
+
+        if ((result = inet_pton(AF_INET6, ip, &try_ipv6.sin6_addr.s6_addr)) <= 0) {
+            
+            // es un dominio pues no es ni IPv4 ni IPv6
+            memset(&(address->addr_storage.address_storage), 0, sizeof(address->addr_storage.address_storage));
+            address->addr_type = ADDR_DOMAIN;
+            memcpy(address->addr_storage.fqdn, ip, strlen(ip));
+            return;
+        }
+        try_ipv6.sin6_port = htons(address->port);
+        memcpy(&address->addr_storage.address_storage, &try_ipv6, address->addr_len);
+        return;
+    }
+    try_ipv4.sin_port = htons(address->port);
+    memcpy(&address->addr_storage.address_storage, &try_ipv4, address->addr_len);
+    return ;
+}
+
