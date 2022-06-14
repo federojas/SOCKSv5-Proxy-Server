@@ -9,10 +9,11 @@
 #include <stdbool.h>
 #include "buffer.h"
 
-#define CHAR_MAX_LENGTH 255
+#define CHAR_MAX_LENGTH 256
 #define AUTH_SUCCESS 0x00
 #define AUTH_FAIL 0x01
 #define AUTH_BAD_CREDENTIALS 0x02
+#define AUTH_VERSION_ID 0x01
 
 typedef enum auth_parser_state {
     AUTH_VERSION,

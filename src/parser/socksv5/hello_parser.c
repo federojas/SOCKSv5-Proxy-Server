@@ -99,8 +99,8 @@ char hello_parser_marshall(buffer *b, const uint8_t method){
     if(n<2){
         return -1;
     }
-    buff[0]=0x05;
-    buff[1]=method;
+    buff[0] = 0x05;
+    buff[1] = method;
     buffer_write_adv(b,2);
     return 2;
 }

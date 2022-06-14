@@ -9,7 +9,7 @@ void auth_parser_init(auth_parser *p) {
 enum auth_parser_state auth_parser_feed(auth_parser *p, const uint8_t byte) {
     switch(p->current_state) {
         case AUTH_VERSION:
-            if(byte == AUTH_VERSION) {
+            if(byte == AUTH_VERSION_ID) {
                 p->current_state = AUTH_USERNAME_LEN;
                 p->version = byte;
             }    
@@ -70,7 +70,7 @@ bool auth_parser_consume(buffer *buffer, auth_parser *p, bool *errored) {
 
     while(!auth_parser_is_done(p->current_state, errored) && buffer_can_read(buffer)) {
         byte = buffer_read(buffer);
-        auth_parser_feed(p, byte); 
+        p->current_state = auth_parser_feed(p, byte); 
     }
 
     return auth_parser_is_done(p->current_state, errored);

@@ -203,6 +203,7 @@ struct socks5 {
     union {
         struct connecting         conn;
         struct copy               copy;
+
     } orig;
 
     /** buffers **/
@@ -216,7 +217,7 @@ struct socks5 {
 
     int error;
 
-    //struct log_info socks_info;
+    // struct log_info user_info;
 
     struct socks5 *next;
 };
@@ -500,8 +501,8 @@ hello_process(const struct hello_st* d) {
     unsigned ret = HELLO_WRITE;
 
     uint8_t m = d->method;
-    const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
-    if (-1 == hello_parser_marshall(d->wb, r)) {
+    // const uint8_t r = (m == METHOD_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
+    if (-1 == hello_parser_marshall(d->wb, m)) {
         ret  = ERROR;
     }
     if (METHOD_NO_ACCEPTABLE_METHODS == m) {
@@ -571,7 +572,7 @@ auth_init(const unsigned state, struct selector_key *key) {
 
 static uint8_t 
 check_auth_credentials(const struct auth_st *d) {
-    if(user_registerd((char*)d->username, (char*)d->password) != 0) 
+    if(user_registerd(d->username->username, d->password->password) != 0) 
         return AUTH_SUCCESS;
     return AUTH_FAIL;
 }
@@ -601,11 +602,11 @@ auth_read(struct selector_key *key) {
     n = recv(key->fd,ptr,count,0);
     if (n > 0){
         buffer_write_adv(buff,n);
-        int st = auth_parser_consume(buff,&d->parser,&error);
-        if(auth_parser_is_done(st,0)){
+        if(auth_parser_consume(buff,&d->parser,&error)) {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
                 ret = auth_process(d);
                 //memcpy(&ATTACHMENT(key)->socks_info.user_info,&d->parser.username,sizeof(d->parser.username));
+                //TODO
             }
             else { 
                 error = true;

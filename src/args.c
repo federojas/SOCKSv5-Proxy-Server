@@ -17,7 +17,7 @@ port(const char *s) {
      if (end == s|| '\0' != *end
         || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
         || sl < 0 || sl > USHRT_MAX) {
-         fprintf(stderr, "port should in in the range of 1-65536: %s\n", s);
+         fprintf(stderr, "Port should in in the range of 1-65536: %s\n", s);
          exit(1);
          return 1;
      }
@@ -26,21 +26,31 @@ port(const char *s) {
 
 static void
 user(char *s, struct user_info *user) {
+    int absent = 0;
     char *p = strchr(s, ':');
     if(p == NULL) {
-        fprintf(stderr, "password not found\n");
+        fprintf(stderr, "Password not found\n");
         exit(1);
     } else {
         *p = 0;
         p++;
+        if(strlen(s) > 255 || strlen(p) > 255){
+            fprintf(stderr, "Username or password specified too long, maximum length is 255 characters\n");
+            exit(1);
+        }
+        //Buscar en users
+
         user->username = s;
         user->password = p;
+        if(absent) {
+            //Buscar en admin
+        }
     }
 }
 
 static void
 version(void) {
-    fprintf(stderr, "socks5v version 0.0\n"
+    fprintf(stderr, "Servidor SOCKSv5 version: " DEFAULT_VERSION_NUMBER "\n"
                     "ITBA Protocolos de ComunicaciÃ³n 2022/1 -- Grupo 3\n"
                     "DOG SOFTWARE LICENSED PRODUCT\n");
 }
@@ -66,30 +76,29 @@ void
 parse_args(const int argc, char **argv, struct socks5args *args) {
 
     memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
+    
+    args->version = DEFAULT_VERSION_NUMBER;
+    args->nusers = 0;
 
-    args->socks_addr = "0.0.0.0";
-    args->socks_port = 1080;
+    args->socks_addr = DEFAULT_PROXY_ADDR;
+    args->socks_port = DEFAULT_SOCKS_PORT;
+    args->socks_on_both = true;
 
-    args->mng_addr   = "127.0.0.1";
-    args->mng_port   = 8080;
-
-    args->stats.spoofing = true;
+    args->mng_addr   = DEFAULT_MNG_ADDR;
+    args->mng_port   = DEFAULT_MNG_PORT;
+    args->mng_on_both = true;
+    
+    args->stats.spoofing = false;
+    args->stats.authentication = false;
+    args->stats.bytes_transfered = 0;
+    args->stats.historic_connections = 0;
+    args->stats.current_connections = 0;
 
     int c;
-    int nusers = 0;
 
     while (true) {
-        int option_index = 0;
-        static struct option long_options[] = {
-            { "doh-ip",    required_argument, 0, 0xD001 },
-            { "doh-port",  required_argument, 0, 0xD002 },
-            { "doh-host",  required_argument, 0, 0xD003 },
-            { "doh-path",  required_argument, 0, 0xD004 },
-            { "doh-query", required_argument, 0, 0xD005 },
-            { 0,           0,                 0, 0 }
-        };
 
-        c = getopt_long(argc, argv, "hl:L:Np:P:u:v", long_options, &option_index);
+        c = getopt(argc, argv, "hl:L:Np:P:u:v");
         if (c == -1)
             break;
 
@@ -99,9 +108,11 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                 break;
             case 'l':
                 args->socks_addr = optarg;
+                args->socks_on_both = false;
                 break;
             case 'L':
                 args->mng_addr = optarg;
+                args->mng_on_both = false;
                 break;
             case 'N':
                 args->stats.spoofing = false;
@@ -113,13 +124,14 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                 args->mng_port   = port(optarg);
                 break;
             case 'u':
-                fprintf(stdout, "\n\nLLEGUE\n\n");
-                if(nusers >= MAX_USERS) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
+                if(args->nusers >= MAX_USERS) {
+                    fprintf(stderr, "\n\nMaximun number of command line users reached: %d.\n", MAX_USERS);
+                    //free_args(); TODO FREE USUSARIOS Y ADMINS Y EL ARGS
                     exit(1);
                 } else {
-                    user(optarg, args->users + nusers);
-                    nusers++;
+                    //COMO MANEJAMOS ADMINS??????
+                    user(optarg, args->users + args->nusers);
+                    args->nusers++;
                 }
                 break;
             case 'v':
@@ -145,6 +157,5 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
 
 
 int user_registerd(char * user, char * pass) {
-    fprintf(stdout, "\n\nLLEGUE\n\n");
-    return strcmp(user, "fico") == 0 && strcmp(pass, "1234");
+    return strcmp(user, "fico") == 0 && strcmp(pass, "1234") == 0;
 }

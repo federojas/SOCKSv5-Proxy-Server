@@ -1,6 +1,7 @@
 INCLUDE= -I ./include
 LDFLAG= -lm -lcheck -lrt -lpthread -lsubunit
 
+
 CFLAGS= -g --std=c11 -fsanitize=address -Wall -Wextra -Werror -Wno-unused-parameter -pthread -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L $(INCLUDE)
 
 #UTILS=./logger/logger.o ./net_utils/util.o

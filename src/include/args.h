@@ -7,6 +7,12 @@
 #define MAX_USERS 10
 #define MAX_CRED_SIZE 255
 
+#define DEFAULT_MNG_PORT 8080
+#define DEFAULT_SOCKS_PORT 1080
+#define DEFAULT_VERSION_NUMBER "1.0"
+#define DEFAULT_MNG_ADDR "127.0.0.1"
+#define DEFAULT_PROXY_ADDR "0.0.0.0"
+
 struct user_info {
     char * username;
     char * password;
@@ -21,14 +27,12 @@ struct socks5args {
     char *          mng_addr;
     unsigned short  mng_port;
     bool            mng_on_both;
-
-    char *              origin_addr;
-    unsigned short      origin_port;
-
-
     
-
-    struct user_info    users[MAX_USERS];
+    int             nusers;
+    int             nadmins;
+    char *          version;
+    struct user_info users[MAX_USERS];
+    struct user_info admins[MAX_USERS];
     struct socks5Stats stats;
 };
 

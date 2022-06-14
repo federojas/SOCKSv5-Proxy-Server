@@ -155,7 +155,6 @@ int main(const int argc, char **argv) {
 
     const char* err_msg = NULL;
     int ret = 0;
-    address_data origin_address;
     int current_sock_fd = -1;
     int proxy_socks5[2], proxy_socks5_size =0;
     int server_manager[2], server_manager_size = 0;
@@ -258,25 +257,22 @@ int main(const int argc, char **argv) {
     //     .handle_close      = NULL, // nada que liberar
     // };
 
-    //Origen para selector
-    origin_address.port = socks5args.origin_port;
-    get_address_data(&origin_address, socks5args.origin_addr);
 
     for (int i = 0; i < proxy_socks5_size; i++) {
-        ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ, &origin_address);
+        ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ, NULL);
         if (ss != SELECTOR_SUCCESS) {
             err_msg = "Error registering SOCKSv5 server passive fd";
             goto finally;
         }
     }
 
-    for (int i = 0; i < server_manager_size; i++) {
-        ss = selector_register(selector, server_manager[i], &socksv5, OP_READ, NULL);
-        if (ss != SELECTOR_SUCCESS) {
-            err_msg = "Error registering server manager passive fd";
-            goto finally;
-        }
-    }
+    // for (int i = 0; i < server_manager_size; i++) {
+    //     ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
+    //     if (ss != SELECTOR_SUCCESS) {
+    //         err_msg = "Error registering server manager passive fd";
+    //         goto finally;
+    //     }
+    // }
 
     //ver timeout
 
@@ -338,7 +334,7 @@ static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
     int port = manager_socket ? socks5args.mng_port : socks5args.socks_port;
     char * string_addr = manager_socket ? socks5args.mng_addr : socks5args.socks_addr;
 
-    // Default config, escuchar en server proxy y en manager
+    // Default config, escuchar en server SOCKSv5 proxy y en server manager
 
     if (strcmp(string_addr,"0.0.0.0") == 0 && addr_type == ADDR_IPV6 && !manager_socket
             && socks5args.socks_on_both ) {
@@ -367,6 +363,7 @@ static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
 
+    log_print(INFO, "Listening on TCP port %d", port);
     if (addr_type == ADDR_IPV4) {
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
