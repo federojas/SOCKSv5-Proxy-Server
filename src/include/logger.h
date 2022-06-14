@@ -1,9 +1,6 @@
 #ifndef __logger_h_
 #define __logger_h_
 
-#include <stdio.h>   /* for printf */
-#include <stdlib.h>  /* for exit */
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
@@ -12,11 +9,14 @@
 #include <netinet/tcp.h>
 #include <unistd.h>
 #include <limits.h>  /* LONG_MIN et al */
-
+#include <stdio.h>   /* for printf */
+#include <stdlib.h>  /* for exit */
 #include <string.h>  /* memset */
 #include <sys/socket.h> // socket
 #include <sys/types.h>  // socket
 #include <stdarg.h> //para el parametro ...
+
+
 typedef enum {DEBUG=0, INFO, LOG_ERROR, FATAL} LOG_LEVEL;
 
 extern LOG_LEVEL current_level;
@@ -40,6 +40,21 @@ char * levelDescription(LOG_LEVEL level);
 	fprintf(stderr,"\n"); }\
 	if ( level==FATAL) exit(1);}
 */
+
+// struct log_info {
+//     uint8_t method;
+//     struct usr user_info;
+//     enum socks_reply_status status;
+//     enum socks_atyp atyp;
+//     struct sockaddr_storage client_addr;
+//     union socks_addr dest_addr;
+//     in_port_t dest_port;
+
+//     //Sniffer
+//     char *user;
+//     char *passwd;
+//     enum protocol protocol;
+// };
 
 #endif
 

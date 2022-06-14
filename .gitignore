@@ -2,6 +2,10 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=c
 
 ### C ###
+
+*.xml
+*.idea
+
 # Prerequisites
 *.d
 
@@ -62,3 +66,4 @@ dkms.conf
 
 ## Executables
 tcpTransparentServer
+server

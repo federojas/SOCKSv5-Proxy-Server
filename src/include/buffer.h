@@ -4,6 +4,22 @@
 #include <stdbool.h>
 #include <unistd.h>  // size_t, ssize_t
 
+#define BUFFER_SIZE 4096
+
+typedef struct buffer buffer;
+struct buffer {
+    uint8_t *data;
+
+    /** límite superior del buffer. inmutable */
+    uint8_t *limit;
+
+    /** puntero de lectura */
+    uint8_t *read;
+
+    /** puntero de escritura */
+    uint8_t *write;
+};
+
 /**
  * buffer.c - buffer con acceso directo (útil para I/O) que mantiene
  *            mantiene puntero de lectura y de escritura.
@@ -81,19 +97,7 @@
  * ↑                       ↑
  * W=0                     limit=6
  */
-typedef struct buffer buffer;
-struct buffer {
-    uint8_t *data;
 
-    /** límite superior del buffer. inmutable */
-    uint8_t *limit;
-
-    /** puntero de lectura */
-    uint8_t *read;
-
-    /** puntero de escritura */
-    uint8_t *write;
-};
 
 /**
  * inicializa el buffer sin utilizar el heap

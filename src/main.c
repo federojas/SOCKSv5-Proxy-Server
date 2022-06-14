@@ -11,13 +11,23 @@
 #include <netinet/tcp.h>
 #include "selector.h"
 #include "logger.h"
+#include "socksv5_nio.h"
+#include "args.h"
+#include "netutils.h"
+#include "buffer.h"
+#include "statistics.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
 #define MAX_PENDING_CONN 20
 #define MAX_ADDR_BUFFER 128
+#define SELECTOR_SIZE 1024
+
 static bool done = false;
-static char addrBuffer[MAX_ADDR_BUFFER];
+extern struct socks5args socks5args;
+// static char addrBuffer[MAX_ADDR_BUFFER];
+
+static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket);
 
 static void
 sigterm_handler(const int signal) {
@@ -25,166 +35,197 @@ sigterm_handler(const int signal) {
     done = true;
 }
 
-struct buffer {
-	char * buffer;
-	size_t len;     // longitud del buffer
-	size_t from;    // desde donde falta escribir
-};
-
 // TODO: este handler no se si esta bien
-void readHandler(struct selector_key *key){
+void read_handler(struct selector_key *key){
     char buffer[1024]; // Buffer for echo string
 	// Receive message from client
 	ssize_t numBytesRcvd = recv(key->fd, buffer, 1024, 0);
 	if (numBytesRcvd < 0) {
-		log(ERROR, "recv() failed");
-		return -1;   // TODO definir codigos de error
+		log_print(LOG_ERROR, "recv() failed");
+		// return -1;   // TODO definir codigos de error
 	}
 
     // TODO: Me falta registrarlo para escritura una vez que ya lei todo?
 }
 
 
-void writeHandler(struct selector_key * key){
-    struct buffer * buffer = (struct buffer * )key->data;
-    size_t bytesToSend = buffer->len - buffer->from;
-	if (bytesToSend > 0) {  // Puede estar listo para enviar, pero no tenemos nada para enviar
-		log(INFO, "Trying to send %zu bytes to socket %d\n", bytesToSend, socket);
-		size_t bytesSent = send(socket, buffer->buffer + buffer->from,bytesToSend,  MSG_DONTWAIT); 
-		log(INFO, "Sent %zu bytes\n", bytesSent);
+void write_handler(struct selector_key * key){
+    // struct buffer * buffer = (struct buffer * )key->data;
+    // size_t bytesToSend = buffer->len - buffer->from;
+	// if (bytesToSend > 0) {  // Puede estar listo para enviar, pero no tenemos nada para enviar
+	// 	log_print(INFO, "Trying to send %zu bytes to socket %d\n", bytesToSend, socket);
+	// 	size_t bytesSent = send(socket, buffer->buffer + buffer->from,bytesToSend,  MSG_DONTWAIT); 
+	// 	log_print(INFO, "Sent %zu bytes\n", bytesSent);
 
-		if ( bytesSent < 0) {
-			// Esto no deberia pasar ya que el socket estaba listo para escritura
-			// TODO: manejar el error
-			log(FATAL, "Error sending to socket %d", socket);
-		} else {
-			size_t bytesLeft = bytesSent - bytesToSend;
+	// 	if ( bytesSent < 0) {
+	// 		// Esto no deberia pasar ya que el socket estaba listo para escritura
+	// 		// TODO: manejar el error
+	// 		// log_print(FATAL, "Error sending to socket %d", socket);
+	// 	} else {
+	// 		size_t bytesLeft = bytesSent - bytesToSend;
 
-			// Si se pudieron mandar todos los bytes limpiamos el buffer y sacamos el fd para el select
-			if ( bytesLeft == 0) {
-				clear(buffer);
-				// TOODO : ME FALTA SACAR EL FD DEL SELECTOR
-			} else {
-				buffer->from += bytesSent;
-			}
-		}
-	}
+	// 		// Si se pudieron mandar todos los bytes limpiamos el buffer y sacamos el fd para el select
+	// 		if ( bytesLeft == 0) {
+	// 			clear(buffer);
+	// 			// TOODO : ME FALTA SACAR EL FD DEL SELECTOR
+	// 		} else {
+	// 			buffer->from += bytesSent;
+	// 		}
+	// 	}
+	// }
 }
+
+
 
 // Estos serian los handlers de los sockets activos que abri con 
 // el destino
-static fd_handler activeSocketHandler = {
-    .handle_read = &readHandler,
-    .handle_write = &writeHandler,
-    .handle_block = NULL,
-    .handle_close = NULL
-};
-
-void socksv5_passive_accept(struct selector_key *key){
-
-    struct sockaddr_storage clntAddr; // Client address
-	// Set length of client address structure (in-out parameter)
-	socklen_t clntAddrLen = sizeof(clntAddr);
-
-	// Wait for a client to connect 
-    // TODO: aca me puedo bloquear?
-	int clntSock = accept(key->fd, (struct sockaddr *) &clntAddr, &clntAddrLen);
-	if (clntSock < 0) {
-		log(ERROR, "accept() failed");
-		return -1;
-	}
-
-	// clntSock is connected to a client!
-	printSocketAddress((struct sockaddr *) &clntAddr, addrBuffer);
-	log(INFO, "Handling client %s", addrBuffer);
+// static fd_handler activeSocketHandler = {
+//     .handle_read = &readHandler,
+//     .handle_write = &writeHandler,
+//     .handle_block = NULL,
+//     .handle_close = NULL
+// };
 
 
-    // lo registro en el selector para esperar que me escriba algo
-    selector_register(key->s, clntSock, &activeSocketHandler, OP_READ, key->data);
+////////////////////// OLD MAIN JUST IN CASE
+
+// unsigned port = PORT;
+
+// if(argc == 1) {
+    //     // utilizamos el default
+    // } else if(argc == 2) {
+    //     char *end     = 0;
+    //     const long sl = strtol(argv[1], &end, 10);
+
+    //     if (end == argv[1] || '\0' != *end 
+    //        || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
+    //        || sl < 0 || sl > USHRT_MAX) {
+    //         fprintf(stderr, "port should be an integer: %s\n", argv[1]);
+    //         return 1;
+    //     }
+    //     port = sl;
+    // } else {
+    //     fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+    //     return 1;
+    // }
 
 
-    // Como soy un tcp transparente, debo abrir un socket activo con el destino final
-    // y pasarle todo
-    // aca estoy hardcodeando una direccion cualquiera cuando en realidad
-    // deberia registrar una tarea bloqueante (getaddrinfo) que me 
-    // averigue la addrinfo del destino
-    int destSocketFd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serSockAddr = {.sin_family = AF_INET,
-        .sin_addr.s_addr = inet_addr("127.0.0.1"),
-        .sin_port = htons(DEST_PORT)};
+    // struct sockaddr_in addr;
+    // memset(&addr, 0, sizeof(addr));
+    // addr.sin_family      = AF_INET;
+    // addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    // addr.sin_port        = htons(port);
 
-    //TODO: el connect es bloqueante, para solucionar esto tendria que 
-    // registrarlo como escritura
-    connect(destSocketFd, (struct sockaddr *) &serSockAddr, sizeof(serSockAddr));
-    // esta linea va?
-   // selector_register(key->s, destSocketFd, &activeSocketHandler, OP_WRITE, key->data);
-}
+    // const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    // if(server < 0) {
+    //     err_msg = "unable to create socket";
+    //     goto finally;
+    // }
 
-int
-main(const int argc, const char **argv) {
-    unsigned port = PORT;
+    // fprintf(stdout, "Listening on TCP port %d\n", port);
 
-    if(argc == 1) {
-        // utilizamos el default
-    } else if(argc == 2) {
-        char *end     = 0;
-        const long sl = strtol(argv[1], &end, 10);
+    // // man 7 ip. no importa reportar nada si falla.
+    // setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
-        if (end == argv[1]|| '\0' != *end 
-           || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
-           || sl < 0 || sl > USHRT_MAX) {
-            fprintf(stderr, "port should be an integer: %s\n", argv[1]);
-            return 1;
-        }
-        port = sl;
-    } else {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return 1;
-    }
+    // if(bind(server, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+    //     err_msg = "unable to bind socket";
+    //     goto finally;
+    // }
 
-    // no tenemos nada que leer de stdin
+    // if (listen(server, MAX_PENDING_CONN) < 0) {
+    //     err_msg = "unable to listen";
+    //     goto finally;
+    // }
+    
+
+    // if(selector_fd_set_nio(server) == -1) {
+    //     err_msg = "getting server socket flags";
+    //     goto finally;
+    // }
+    
+    // ss = selector_register(selector, server, &socksv5, OP_READ, NULL);
+    // if(ss != SELECTOR_SUCCESS) {
+    //     err_msg = "registering fd";
+    //     goto finally;
+    // }
+
+int main(const int argc, char **argv) {
+
     close(0);
 
-    const char       *err_msg = NULL;
+    const char* err_msg = NULL;
+    int ret = 0;
+    int current_sock_fd = -1;
+    int proxy_socks5[2], proxy_socks5_size =0;
+    int server_manager[2], server_manager_size = 0;
+    parse_args(argc, argv, &socks5args);
+
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port        = htons(port);
+    //Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
 
-    const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(server < 0) {
-        err_msg = "unable to create socket";
+    current_sock_fd = build_TCP_passive_socket(ADDR_IPV4, false);
+    if (current_sock_fd < 0) {
+        log_print(DEBUG, "Unable to create passive IPv4 proxy");
+    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+        perror("selector_fd_set_nio");
+        err_msg = "Error getting SOCKSv5 server IPv4 socket as non blocking";
         goto finally;
+    } else {
+        proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
 
-    fprintf(stdout, "Listening on TCP port %d\n", port);
-
-    // man 7 ip. no importa reportar nada si falla.
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
-    if(bind(server, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
-        err_msg = "unable to bind socket";
+    current_sock_fd = build_TCP_passive_socket(ADDR_IPV6, false);
+    if (current_sock_fd < 0) {
+        log_print(DEBUG, "Unable to create passive IPv6 proxy");
+    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+        perror("selector_fd_set_nio");
+        err_msg = "Error getting SOCKSv5 server IPv6 socket as non blocking";
         goto finally;
+    } else {
+        proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
 
-    if (listen(server, MAX_PENDING_CONN) < 0) {
-        err_msg = "unable to listen";
-        goto finally;
+    if (proxy_socks5_size == 0) {
+        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for SOCKSv5 server");
     }
 
-    // registrar sigterm es Ãºtil para terminar el programa normalmente.
+    //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
+
+    current_sock_fd = build_TCP_passive_socket(ADDR_IPV4, true);
+    if (current_sock_fd < 0) {
+        log_print(DEBUG, "Unable to create passive IPv4 proxy");
+    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+        perror("selector_fd_set_nio");
+        err_msg = "Error getting server manager IPv4 socket as non blocking";
+        goto finally;
+    } else {
+        server_manager[server_manager_size++] = current_sock_fd;
+    }
+
+    current_sock_fd = build_TCP_passive_socket(ADDR_IPV6, true);
+    if (current_sock_fd < 0) {
+        log_print(DEBUG, "Unable to create passive IPv6 proxy");
+    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+        perror("selector_fd_set_nio");
+        err_msg = "Error getting server manager IPv6 socket as non blocking";
+        goto finally;
+    } else {
+        server_manager[server_manager_size++] = current_sock_fd;
+    }
+
+    if (server_manager_size == 0) {
+        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for server manager");
+    }
+
+    // registrar sigterm es util para terminar el programa normalmente.
     // esto ayuda mucho en herramientas como valgrind.
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
 
-    if(selector_fd_set_nio(server) == -1) {
-        err_msg = "getting server socket flags";
-        goto finally;
-    }
+    //timeout
+
     const struct selector_init conf = {
         .signal = SIGALRM,
         .select_timeout = {
@@ -193,42 +234,62 @@ main(const int argc, const char **argv) {
         },
     };
     if(0 != selector_init(&conf)) {
-        err_msg = "initializing selector";
+        err_msg = "Unable to initialize selector";
         goto finally;
     }
 
-    selector = selector_new(1024);
+    selector = selector_new(SELECTOR_SIZE);
     if(selector == NULL) {
-        err_msg = "unable to create selector";
+        err_msg = "Unable to create selector";
         goto finally;
     }
 
-    // probablemente aca me falta guardar la tarea bloqueante 
-    // del getaddrinfo
-    const struct fd_handler tcpTransparentProxy = {
+    const struct fd_handler socksv5 = {
         .handle_read       = socksv5_passive_accept,
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server, &tcpTransparentProxy,
-                                              OP_READ, NULL);
-    if(ss != SELECTOR_SUCCESS) {
-        err_msg = "registering fd";
-        goto finally;
+
+    //manager handler FALTA
+    // const struct fd_handler manager = {
+    //     .handle_read       = manager_passive_accept,
+    //     .handle_write      = NULL,
+    //     .handle_close      = NULL, // nada que liberar
+    // };
+
+
+    for (int i = 0; i < proxy_socks5_size; i++) {
+        ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ, NULL);
+        if (ss != SELECTOR_SUCCESS) {
+            err_msg = "Error registering SOCKSv5 server passive fd";
+            goto finally;
+        }
     }
+
+    // for (int i = 0; i < server_manager_size; i++) {
+    //     ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
+    //     if (ss != SELECTOR_SUCCESS) {
+    //         err_msg = "Error registering server manager passive fd";
+    //         goto finally;
+    //     }
+    // }
+
+    //ver timeout
+
     for(;!done;) {
         err_msg = NULL;
         ss = selector_select(selector);
         if(ss != SELECTOR_SUCCESS) {
-            err_msg = "serving";
+            log_print(LOG_ERROR, "%s",selector_error(ss));
+            err_msg = "Error serving";
             goto finally;
         }
     }
     if(err_msg == NULL) {
-        err_msg = "closing";
+        err_msg = "No error, closing";
     }
 
-    int ret = 0;
+    
 finally:
     if(ss != SELECTOR_SUCCESS) {
         fprintf(stderr, "%s: %s\n", (err_msg == NULL) ? "": err_msg,
@@ -245,10 +306,103 @@ finally:
     }
     selector_close();
 
+    for (int i = 0; i < proxy_socks5_size; i++){
+        close(proxy_socks5[i]);
+    }
+
+    for (int i = 0; i < server_manager_size; i++){
+        close(server_manager[i]);
+    }
+
     socksv5_pool_destroy();
 
-    if(server >= 0) {
-        close(server);
-    }
     return ret;
+}
+
+
+static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
+
+    int new_socket;
+
+    struct sockaddr_in addr;
+    struct sockaddr_in6 addr_6;
+
+    int network_flag = (addr_type == ADDR_IPV4) ? AF_INET : AF_INET6;
+    int socket_type = SOCK_STREAM; //TCP socket
+    int protocol = IPPROTO_TCP; //TCP socket
+
+    int port = manager_socket ? socks5args.mng_port : socks5args.socks_port;
+    char * string_addr = manager_socket ? socks5args.mng_addr : socks5args.socks_addr;
+
+    // Default config, escuchar en server SOCKSv5 proxy y en server manager
+
+    if (strcmp(string_addr,"0.0.0.0") == 0 && addr_type == ADDR_IPV6 && !manager_socket
+            && socks5args.socks_on_both ) {
+        string_addr = "0::0";
+    }
+
+    if (strcmp(string_addr,"127.0.0.1") == 0 && addr_type == ADDR_IPV6 && manager_socket
+            && socks5args.mng_on_both ) {
+        string_addr = "::1";
+    }
+
+    new_socket = socket(network_flag, socket_type, protocol);
+    if(new_socket < 0) {
+        log_print(LOG_ERROR, "Unable to create passive socket");
+        return -1;
+    }
+
+    // man 7 ip. no importa reportar nada si falla, solo reporto el error
+    if(setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
+        log_print(LOG_ERROR, "Unable to set socket options");
+    }
+
+    // Sockets ipv6 no acepta ipv4 
+    // man 7 ip. no importa reportar nada si falla, solo reporto el error
+    if (addr_type == ADDR_IPV6 && setsockopt(new_socket, IPPROTO_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof(int)) < 0) {
+        log_print(LOG_ERROR, "Unable to set socket options");
+    }
+
+    log_print(INFO, "Listening on TCP port %d", port);
+    if (addr_type == ADDR_IPV4) {
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port =  htons(port);
+        if (inet_pton(AF_INET, string_addr, &addr.sin_addr.s_addr) <= 0) {
+            log_print(DEBUG, "Address %s does not translate to IPv4", string_addr);
+            close(new_socket);
+            return -1;
+        }
+        if (bind(new_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+            log_print(LOG_ERROR, "Unable to bind socket");
+            close(new_socket);
+            return -1;
+        }
+    } else {
+        memset(&addr_6, 0, sizeof(addr_6));
+        addr_6.sin6_family = AF_INET6;
+        addr_6.sin6_port = htons(port);
+        if (inet_pton(AF_INET6, string_addr, &addr_6.sin6_addr) <= 0) {
+            log_print(DEBUG, "Address %s does not translate to IPv6", string_addr);
+            close(new_socket);
+            return -1;
+        }
+        if (bind(new_socket, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0) {
+
+            log_print(LOG_ERROR, "Unable to bind socket");
+            close(new_socket);
+            return -1;
+        }
+    }
+
+    if (!manager_socket && listen(new_socket, MAX_PENDING_CONN) < 0) {
+        log_print(LOG_ERROR, "Unable to listen socket");
+        close(new_socket);
+        return -1;
+    }
+    else {
+        log_print(INFO, "Waiting for new %s %s connection on socket with fd: %d", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", manager_socket ? "SOCKSv5":"manager", new_socket);
+    }
+
+    return new_socket;
 }
