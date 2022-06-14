@@ -7,6 +7,8 @@
 
 #include "args.h"
 
+struct socks5args * socks5args;
+
 static unsigned short
 port(const char *s) {
      char *end     = 0;
@@ -62,6 +64,7 @@ usage(const char *progname) {
 
 void 
 parse_args(const int argc, char **argv, struct socks5args *args) {
+
     memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
 
     args->socks_addr = "0.0.0.0";
@@ -110,6 +113,7 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                 args->mng_port   = port(optarg);
                 break;
             case 'u':
+                fprintf(stdout, "\n\nLLEGUE\n\n");
                 if(nusers >= MAX_USERS) {
                     fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
                     exit(1);
