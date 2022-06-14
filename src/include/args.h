@@ -29,10 +29,8 @@ struct socks5args {
     bool            mng_on_both;
     
     int             nusers;
-    int             nadmins;
     char *          version;
     struct user_info users[MAX_USERS];
-    struct user_info admins[MAX_USERS];
     struct socks5Stats stats;
 };
 
@@ -44,6 +42,6 @@ struct socks5args {
  */
 void parse_args(const int argc, char **argv, struct socks5args *args);
 
-int user_registerd(char * user, char * pass);
+bool user_registerd(char * user, char * pass);
 
 #endif

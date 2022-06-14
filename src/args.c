@@ -157,7 +157,10 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
 }
 
 
-
-int user_registerd(char * user, char * pass) {
-    return strcmp(user, "fico") == 0 && strcmp(pass, "1234") == 0;
+bool user_registerd(char * user, char * pass) {
+    for(int i = 0; i < socks5args.nusers; i++ ) {
+        if(strcmp(user, socks5args.users[i].username) == 0 && strcmp(pass, socks5args.users[i].password) == 0)
+            return true;
+    }
+    return false;
 }
