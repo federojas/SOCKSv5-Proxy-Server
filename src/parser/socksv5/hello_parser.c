@@ -2,6 +2,7 @@
 #include "logger.h"
 #include "socks_utils.h"
 
+//TODO AUTH
 // void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method), void *data) {
 //     p->current_state = HELLO_VERSION;
 //     p->on_auth_method = on_auth_method;

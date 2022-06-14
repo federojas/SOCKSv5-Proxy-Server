@@ -66,6 +66,7 @@ usage(const char *progname) {
         "   -p <SOCKS port>  Puerto entrante conexiones SOCKS.\n"
         "   -P <conf port>   Puerto entrante conexiones configuracion\n"
         "   -u <name>:<pass> Usuario y contraseÃ±a de usuario que puede usar el proxy. Hasta 10.\n"
+        "   -N               Deshabilitar spoofing de contraseÃ±as sobre POP3.\n"
         "   -v               Imprime informaciÃ³n sobre la versiÃ³n versiÃ³n y termina.\n"
         "\n",
         progname);
@@ -132,6 +133,7 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                     //COMO MANEJAMOS ADMINS??????
                     user(optarg, args->users + args->nusers);
                     args->nusers++;
+                    args->stats.authentication = true;
                 }
                 break;
             case 'v':
