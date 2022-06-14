@@ -13,6 +13,8 @@
 #include <arpa/inet.h>
 #include "hello_parser.h"
 #include "request_parser.h"
+#include "auth_parser.h"
+#include "args.h"
 #include "buffer.h"
 #include "stm.h"
 #include "socksv5_nio.h"
@@ -49,7 +51,16 @@ struct hello_st {
     struct hello_parser   parser;
     /** el mÃ©todo de autenticaciÃ³n seleccionado */
     uint8_t               method;
-} ;
+};
+
+struct auth_st {
+    buffer               *rb, *wb;
+    auth_parser          parser;
+    struct username*         username;
+    struct password*     password;
+    uint8_t              status;
+};
+
 struct request_st {
     /** buffer utilizado para I/O */
     buffer               *rb, *wb;
@@ -68,13 +79,13 @@ struct request_st {
 } ;
 
 //------------------------------------------------------------
-struct copy{
+struct copy {
     int *fd;
     fd_interest duplex;
     buffer *rb, *wb;
     struct copy *other; 
 };
-struct connecting{
+struct connecting {
      buffer *wb;
     const int *client_fd;
     int *origin_fd;
@@ -90,6 +101,11 @@ static unsigned hello_process(const struct hello_st* d);
 static unsigned hello_read(struct selector_key *key);
 static unsigned request_connect (struct selector_key *key, struct request_st *d);
 static unsigned hello_write(struct selector_key *key);
+static void auth_init(const unsigned state, struct selector_key *key);
+//static uint8_t check_credentials(const struct auth_st *d);
+static unsigned auth_process(struct auth_st *d);
+static unsigned auth_read(struct selector_key *key);
+static unsigned auth_write(struct selector_key *key);
 static void request_init(const unsigned state, struct selector_key *key);
 static unsigned request_read (struct selector_key *key);
 static unsigned request_resolv_done(struct selector_key *key);
@@ -116,10 +132,13 @@ static const struct state_definition client_statbl[] = {
         .on_write_ready   = hello_write,
     },
     {
-        .state=AUTH_READ,
+        .state              = AUTH_READ,
+        .on_arrival         = auth_init,
+        .on_read_ready      = auth_read,
     },
     {
-        .state=AUTH_WRITE,
+        .state              = AUTH_WRITE,
+        .on_write_ready     = auth_write
     },
     {
         .state            = REQUEST_READ,
@@ -176,6 +195,7 @@ struct socks5 {
     union {
         struct hello_st           hello;
         struct request_st         request;
+        struct auth_st            auth;
         struct copy               copy;
     } client;
     /** estados para el origin_fd */
@@ -193,6 +213,8 @@ struct socks5 {
     unsigned references;
 
     int error;
+
+    //struct log_info socks_info;
 
     struct socks5 *next;
 };
@@ -406,7 +428,7 @@ fail:
 
 
 /** callback del parser utilizado en `read_hello' */
-/*
+
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t *selected  = p->data;
@@ -415,7 +437,7 @@ on_hello_method(struct hello_parser *p, const uint8_t method) {
        *selected = method;
     }
 }
-*/
+
 
 /** inicializa las variables de los estados HELLO_â€¦ */
 static void hello_read_init(const unsigned state, struct selector_key *key) {
@@ -427,7 +449,7 @@ static void hello_read_init(const unsigned state, struct selector_key *key) {
 
     d->parser.data                     = &d->method;
     // TODO: agregar on auth method
-    d->parser.on_auth_method = NULL;
+    d->parser.on_auth_method = on_hello_method, hello_parser_init(&d->parser);
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
@@ -521,96 +543,94 @@ hello_write(struct selector_key *key)
 }
 
 // ////////////////  AUTH  ////////////////
-// static void 
-// auth_init(struct selector_key *key)
-// {
-//     struct auth_st *d = &ATTACHMENT(key)->client.auth;
+static void 
+auth_init(const unsigned state, struct selector_key *key) {
+    struct auth_st *d = &ATTACHMENT(key)->client.auth;
 
-//     d->rb = &(ATTACHMENT(key)->read_buffer);
-//     d->wb = &(ATTACHMENT(key)->write_buffer);
-//     auth_parser_init(&d->parser,AUTH_SOCKS);
-//     d->usr = &d->parser.usr;
-//     d->pass = &d->parser.pass;
-// }
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->wb = &(ATTACHMENT(key)->write_buffer);
+    auth_parser_init(&d->parser);
+    d->username = &d->parser.username;
+    d->password = &d->parser.password;
+}
 
-// static uint8_t 
-// check_credentials(const struct auth_st *d){
-//     if(registed((char*)d->usr->uname,(char*)d->pass->passwd) != 0) return AUTH_SUCCESS;
-//     return AUTH_FAIL;
-// }
+static uint8_t 
+check_auth_credentials(const struct auth_st *d) {
+    if(user_registerd((char*)d->username, (char*)d->password) != 0) 
+        return AUTH_SUCCESS;
+    return AUTH_FAIL;
+}
 
-// static unsigned 
-// auth_process(struct auth_st *d){
-//     unsigned ret = AUTH_WRITE;
-//     uint8_t status = check_credentials(d);
-//     if(auth_marshal(d->wb,status,d->parser.version) == -1){
-//         ret = ERROR;
-//     }
-//     d->status = status;
-//     return ret;
-// }
+static unsigned 
+auth_process(struct auth_st *d) {
+    unsigned ret = AUTH_WRITE;
+    uint8_t status = check_auth_credentials(d);
+    if(auth_marshall(d->wb,status,d->parser.version) == -1){
+        ret = ERROR;
+    }
+    d->status = status;
+    return ret;
+}
 
-// static unsigned 
-// auth_read(struct selector_key *key){
-//     unsigned ret = AUTH_READ;
-//     struct auth_st * d = &ATTACHMENT(key)->client.auth;
-//     bool error = false;
-//     uint8_t *ptr;
-//     buffer * buff = d->rb;
-//     size_t count;
-//     ssize_t n;
+static unsigned 
+auth_read(struct selector_key *key) {
+    unsigned ret = AUTH_READ;
+    struct auth_st * d = &ATTACHMENT(key)->client.auth;
+    bool error = false;
+    uint8_t *ptr;
+    buffer * buff = d->rb;
+    size_t count;
+    ssize_t n;
 
-//     ptr = buffer_write_ptr(buff,&count);
-//     n = recv(key->fd,ptr,count,0);
-//     if (n > 0){
-//         buffer_write_adv(buff,n);
-//         int st = auth_consume(buff,&d->parser,&error);
-//         if(auth_is_done(st,0)){
-//             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
-//             {
-//                 ret = auth_process(d);
-//                 memcpy(&ATTACHMENT(key)->socks_info.user_info,&d->parser.usr,sizeof(d->parser.usr));
-                
-//             }
-//             else{
-//                 error = true;
-//                 ret = ERROR;
-//             }
-//         }
+    ptr = buffer_write_ptr(buff,&count);
+    n = recv(key->fd,ptr,count,0);
+    if (n > 0){
+        buffer_write_adv(buff,n);
+        int st = auth_parser_consume(buff,&d->parser,&error);
+        if(auth_parser_is_done(st,0)){
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
+                ret = auth_process(d);
+                //memcpy(&ATTACHMENT(key)->socks_info.user_info,&d->parser.username,sizeof(d->parser.username));
+            }
+            else { 
+                error = true;
+                ret = ERROR;
+            }
+        }
 
-//     }
-//     else{
-//         error = true;
-//         ret = ERROR;
-//     }
-//     return error ? ERROR : ret;
-// }
+    }
+    else{
+        error = true;
+        ret = ERROR;
+    }
+    return error ? ERROR : ret;
+}
 
-// static unsigned auth_write(struct selector_key *key){
-//     struct auth_st * d = &ATTACHMENT(key)->client.auth;
-//     unsigned ret = AUTH_WRITE;
-//     uint8_t *ptr;
-//     size_t count;
-//     ssize_t n;
-//     buffer *buff = d->wb;
-//     ptr = buffer_read_ptr(buff,&count);
-//     n = send(key->fd,ptr,count,MSG_NOSIGNAL);
-//     if(d->status != AUTH_SUCCESS){
-//         ret = ERROR;
-//     }
-//     else if (n > 0){
-//         buffer_read_adv(buff,n);
-//         if(!buffer_can_read(buff)){
-//             if(selector_set_interest_key(key,OP_READ) == SELECTOR_SUCCESS){
-//                 ret = REQUEST_READ;
-//             }
-//             else{
-//                 ret = ERROR;
-//             }
-//         }
-//     }
-//     return ret;
-// }
+static unsigned auth_write(struct selector_key *key) {
+    struct auth_st * d = &ATTACHMENT(key)->client.auth;
+    unsigned ret = AUTH_WRITE;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+    buffer *buff = d->wb;
+    ptr = buffer_read_ptr(buff,&count);
+    n = send(key->fd,ptr,count,MSG_NOSIGNAL);
+    if(d->status != AUTH_SUCCESS){
+        ret = ERROR;
+    }
+    else if (n > 0){
+        buffer_read_adv(buff,n);
+        if(!buffer_can_read(buff)){
+            if(selector_set_interest_key(key,OP_READ) == SELECTOR_SUCCESS){
+                ret = REQUEST_READ;
+            }
+            else{
+                ret = ERROR;
+            }
+        }
+    }
+    return ret;
+}
 
 // ////////////////////////////////////////
 ////////////////  REQUEST  ////////////////
@@ -864,26 +884,27 @@ request_connecting(struct selector_key *key)
 {
     int error;
     socklen_t len = sizeof(error);
-    struct connecting *d = &ATTACHMENT(key)->orig.conn;
+    // struct connecting *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *d = ATTACHMENT(key);
 
     if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-        *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+        *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     } else {
         if (error == 0) {
-            *d->status = SOCKS5_STATUS_SUCCEED;
-            *d->origin_fd = key->fd;
+            *d->orig.conn.status = SOCKS5_STATUS_SUCCEED;
+            *d->orig.conn.origin_fd = key->fd;
         } else {
-            *d->status = errno_to_socks(error);
+            *d->orig.conn.status = errno_to_socks(error);
         }
     }
 
-    if(-1 == request_marshall(d->wb, *d->status)) {
-         *d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+    if(-1 == request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
+         *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
          abort(); // el buffer tiene que ser mas grande en la variable
     } 
 
     selector_status s = 0;
-    s |= selector_set_interest      (key->s,*d->client_fd, OP_WRITE);
+    s |= selector_set_interest      (key->s,*d->orig.conn.client_fd, OP_WRITE);
     s |= selector_set_interest_key  (key, OP_NOOP);
 
     // Mandamos la respuesta al cliente

@@ -41,5 +41,20 @@ char * levelDescription(LOG_LEVEL level);
 	if ( level==FATAL) exit(1);}
 */
 
+// struct log_info {
+//     uint8_t method;
+//     struct usr user_info;
+//     enum socks_reply_status status;
+//     enum socks_atyp atyp;
+//     struct sockaddr_storage client_addr;
+//     union socks_addr dest_addr;
+//     in_port_t dest_port;
+
+//     //Sniffer
+//     char *user;
+//     char *passwd;
+//     enum protocol protocol;
+// };
+
 #endif
 
