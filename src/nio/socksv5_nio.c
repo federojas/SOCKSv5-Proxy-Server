@@ -217,8 +217,6 @@ struct socks5 {
 
     int error;
 
-    // struct log_info user_info;
-
     struct socks5 *next;
 };
 
@@ -605,8 +603,6 @@ auth_read(struct selector_key *key) {
         if(auth_parser_consume(buff,&d->parser,&error)) {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
                 ret = auth_process(d);
-                //memcpy(&ATTACHMENT(key)->socks_info.user_info,&d->parser.username,sizeof(d->parser.username));
-                //TODO
             }
             else { 
                 error = true;

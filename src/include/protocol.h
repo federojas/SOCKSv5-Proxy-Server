@@ -29,11 +29,11 @@ typedef enum t_alter_cmd{
     CMD_TOGGLE_AUTH                 =0X03,
 }t_alter_cmd;
 
-typedef struct user_info{
+typedef struct dog_user_info{
     char username[MAX_CREDENTIAL_SIZE];
     char password[MAX_CREDENTIAL_SIZE];
     bool isAdmin;
-}user_info;
+}dog_user_info;
 
-typedef user_info *user_info_p;
+typedef dog_user_info *dog_user_info_p;
 #endif

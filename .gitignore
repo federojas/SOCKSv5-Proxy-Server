@@ -66,4 +66,4 @@ dkms.conf
 
 ## Executables
 tcpTransparentServer
-server
+socks5d

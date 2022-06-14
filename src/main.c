@@ -25,146 +25,31 @@
 
 static bool done = false;
 extern struct socks5args socks5args;
-// static char addrBuffer[MAX_ADDR_BUFFER];
 
 static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket);
 
+    // TODO: Clean up function
 static void
 sigterm_handler(const int signal) {
     printf("signal %d, cleaning up and exiting\n",signal);
     done = true;
 }
 
-// TODO: este handler no se si esta bien
-void read_handler(struct selector_key *key){
-    char buffer[1024]; // Buffer for echo string
-	// Receive message from client
-	ssize_t numBytesRcvd = recv(key->fd, buffer, 1024, 0);
-	if (numBytesRcvd < 0) {
-		log_print(LOG_ERROR, "recv() failed");
-		// return -1;   // TODO definir codigos de error
-	}
-
-    // TODO: Me falta registrarlo para escritura una vez que ya lei todo?
-}
-
-
-void write_handler(struct selector_key * key){
-    // struct buffer * buffer = (struct buffer * )key->data;
-    // size_t bytesToSend = buffer->len - buffer->from;
-	// if (bytesToSend > 0) {  // Puede estar listo para enviar, pero no tenemos nada para enviar
-	// 	log_print(INFO, "Trying to send %zu bytes to socket %d\n", bytesToSend, socket);
-	// 	size_t bytesSent = send(socket, buffer->buffer + buffer->from,bytesToSend,  MSG_DONTWAIT); 
-	// 	log_print(INFO, "Sent %zu bytes\n", bytesSent);
-
-	// 	if ( bytesSent < 0) {
-	// 		// Esto no deberia pasar ya que el socket estaba listo para escritura
-	// 		// TODO: manejar el error
-	// 		// log_print(FATAL, "Error sending to socket %d", socket);
-	// 	} else {
-	// 		size_t bytesLeft = bytesSent - bytesToSend;
-
-	// 		// Si se pudieron mandar todos los bytes limpiamos el buffer y sacamos el fd para el select
-	// 		if ( bytesLeft == 0) {
-	// 			clear(buffer);
-	// 			// TOODO : ME FALTA SACAR EL FD DEL SELECTOR
-	// 		} else {
-	// 			buffer->from += bytesSent;
-	// 		}
-	// 	}
-	// }
-}
-
-
-
-// Estos serian los handlers de los sockets activos que abri con 
-// el destino
-// static fd_handler activeSocketHandler = {
-//     .handle_read = &readHandler,
-//     .handle_write = &writeHandler,
-//     .handle_block = NULL,
-//     .handle_close = NULL
-// };
-
-
-////////////////////// OLD MAIN JUST IN CASE
-
-// unsigned port = PORT;
-
-// if(argc == 1) {
-    //     // utilizamos el default
-    // } else if(argc == 2) {
-    //     char *end     = 0;
-    //     const long sl = strtol(argv[1], &end, 10);
-
-    //     if (end == argv[1] || '\0' != *end 
-    //        || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
-    //        || sl < 0 || sl > USHRT_MAX) {
-    //         fprintf(stderr, "port should be an integer: %s\n", argv[1]);
-    //         return 1;
-    //     }
-    //     port = sl;
-    // } else {
-    //     fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-    //     return 1;
-    // }
-
-
-    // struct sockaddr_in addr;
-    // memset(&addr, 0, sizeof(addr));
-    // addr.sin_family      = AF_INET;
-    // addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // addr.sin_port        = htons(port);
-
-    // const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    // if(server < 0) {
-    //     err_msg = "unable to create socket";
-    //     goto finally;
-    // }
-
-    // fprintf(stdout, "Listening on TCP port %d\n", port);
-
-    // // man 7 ip. no importa reportar nada si falla.
-    // setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
-    // if(bind(server, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
-    //     err_msg = "unable to bind socket";
-    //     goto finally;
-    // }
-
-    // if (listen(server, MAX_PENDING_CONN) < 0) {
-    //     err_msg = "unable to listen";
-    //     goto finally;
-    // }
-    
-
-    // if(selector_fd_set_nio(server) == -1) {
-    //     err_msg = "getting server socket flags";
-    //     goto finally;
-    // }
-    
-    // ss = selector_register(selector, server, &socksv5, OP_READ, NULL);
-    // if(ss != SELECTOR_SUCCESS) {
-    //     err_msg = "registering fd";
-    //     goto finally;
-    // }
-
 int main(const int argc, char **argv) {
 
-    close(0);
+    close(STDIN_FILENO);
 
     const char* err_msg = NULL;
     int ret = 0;
     int current_sock_fd = -1;
     int proxy_socks5[2], proxy_socks5_size =0;
-    int server_manager[2], server_manager_size = 0;
+    //int server_manager[2], server_manager_size = 0;
     parse_args(argc, argv, &socks5args);
 
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
     //Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
-
     current_sock_fd = build_TCP_passive_socket(ADDR_IPV4, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
@@ -175,7 +60,6 @@ int main(const int argc, char **argv) {
     } else {
         proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
-
     current_sock_fd = build_TCP_passive_socket(ADDR_IPV6, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
@@ -187,12 +71,14 @@ int main(const int argc, char **argv) {
         proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
 
+
     if (proxy_socks5_size == 0) {
         log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for SOCKSv5 server");
     }
 
-    //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
 
+    //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
+    /*
     current_sock_fd = build_TCP_passive_socket(ADDR_IPV4, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
@@ -203,7 +89,6 @@ int main(const int argc, char **argv) {
     } else {
         server_manager[server_manager_size++] = current_sock_fd;
     }
-
     current_sock_fd = build_TCP_passive_socket(ADDR_IPV6, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
@@ -218,13 +103,10 @@ int main(const int argc, char **argv) {
     if (server_manager_size == 0) {
         log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for server manager");
     }
+    */
 
-    // registrar sigterm es util para terminar el programa normalmente.
-    // esto ayuda mucho en herramientas como valgrind.
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
-
-    //timeout
 
     const struct selector_init conf = {
         .signal = SIGALRM,
@@ -233,6 +115,7 @@ int main(const int argc, char **argv) {
             .tv_nsec = 0,
         },
     };
+
     if(0 != selector_init(&conf)) {
         err_msg = "Unable to initialize selector";
         goto finally;
@@ -250,14 +133,6 @@ int main(const int argc, char **argv) {
         .handle_close      = NULL, // nada que liberar
     };
 
-    //manager handler FALTA
-    // const struct fd_handler manager = {
-    //     .handle_read       = manager_passive_accept,
-    //     .handle_write      = NULL,
-    //     .handle_close      = NULL, // nada que liberar
-    // };
-
-
     for (int i = 0; i < proxy_socks5_size; i++) {
         ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ, NULL);
         if (ss != SELECTOR_SUCCESS) {
@@ -266,6 +141,13 @@ int main(const int argc, char **argv) {
         }
     }
 
+    // TODO: manager handler
+    // const struct fd_handler manager = {
+    //     .handle_read       = manager_passive_accept,
+    //     .handle_write      = NULL,
+    //     .handle_close      = NULL, // nada que liberar
+    // };
+
     // for (int i = 0; i < server_manager_size; i++) {
     //     ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
     //     if (ss != SELECTOR_SUCCESS) {
@@ -273,8 +155,6 @@ int main(const int argc, char **argv) {
     //         goto finally;
     //     }
     // }
-
-    //ver timeout
 
     for(;!done;) {
         err_msg = NULL;
@@ -310,9 +190,11 @@ finally:
         close(proxy_socks5[i]);
     }
 
+    /*
     for (int i = 0; i < server_manager_size; i++){
         close(server_manager[i]);
     }
+    */
 
     socksv5_pool_destroy();
 
