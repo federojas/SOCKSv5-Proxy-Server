@@ -676,7 +676,6 @@ request_resolv_blocking(void * data) {
     struct selector_key *key = (struct selector_key *) data;
     struct socks5 *s = ATTACHMENT(key);
 
-    fprintf(stderr, "entramos al resolv blocking");
     pthread_detach(pthread_self());
     s->origin_resolution = 0;
 
@@ -693,18 +692,14 @@ request_resolv_blocking(void * data) {
     char buff[7]; //TODO 7??? HAY QUE DECIDIR EL TAMAÑO ACA?
     snprintf(buff, sizeof(buff), "%d", ntohs(s->client.request.request.dest_port));
 
-    fprintf(stderr, "antes del getaddrinfo");
     //TODO MANEJO ERRORES DE GETADDRINFO
     getaddrinfo(s->client.request.request.dest_addr.fqdn, buff, &hints, &s->origin_resolution);
 
-    fprintf(stderr, "despues del getaddrinfo");
 
     selector_notify_block(key->s, key->fd);
 
-    fprintf(stderr, "antes del free");
     free(data);
 
-    fprintf(stderr, "despues del free");
     return 0;
 }
 
@@ -782,7 +777,6 @@ request_process (struct selector_key* key, struct request_st* d) {
                         if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
                             ret = REQUEST_WRITE;
                             d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-                            // falta liberar la memoria del selector_key k ?
                             selector_set_interest_key(key, OP_WRITE);
                         } else {
                             ret = REQUEST_RESOLV;

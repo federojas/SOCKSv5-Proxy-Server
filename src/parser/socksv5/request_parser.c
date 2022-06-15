@@ -124,7 +124,6 @@ void request_parser_init(request_parser *p) {
 }
 
 request_state request_parser_feed(request_parser *p, uint8_t byte) {
-    
     switch (p->current_state)
     {
         case REQUEST_VERSION:
@@ -239,7 +238,6 @@ int request_marshall(buffer *b, const enum socks5_response_status status, const 
     int addr_size=0;
     uint8_t *aux=NULL;
 
-    fprintf(stderr, "llegue al marshall");
     /* vamos switcheando entre los diferentes tipos, y en base al tipo de address
     sabemos que hay que ponerle a los lugares restantes de buff*/
     switch (atyp)
@@ -267,13 +265,12 @@ int request_marshall(buffer *b, const enum socks5_response_status status, const 
             len+=addr_size;
             break;
         default:
-            log_print(LOG_ERROR,"invalid address type in request marshall");
+            log_print(LOG_ERROR,"Invalid address type in request marshall");
             return -1;
             break;
     }
 
-    if (n < len)
-    {
+    if (n < len) {
         free(aux);
         return -1;
     }
