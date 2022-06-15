@@ -25,6 +25,7 @@
 
 static bool done = false;
 extern struct socks5args socks5args;
+extern struct socks5_stats socks5_stats;
 
 static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket);
 
@@ -45,7 +46,8 @@ int main(const int argc, char **argv) {
     int proxy_socks5[2], proxy_socks5_size =0;
     //int server_manager[2], server_manager_size = 0;
     parse_args(argc, argv, &socks5args);
-
+    stats_init(&socks5_stats);
+    
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 

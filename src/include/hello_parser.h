@@ -28,7 +28,7 @@ typedef struct hello_parser {
     uint8_t methods_remaining;
 } hello_parser;
 
-void hello_parser_init(hello_parser *p);
+void hello_parser_init(hello_parser *p, void (*on_auth_method)(hello_parser *p, uint8_t method));
 
 enum hello_parser_state hello_parser_feed(hello_parser *p, const uint8_t byte);
 

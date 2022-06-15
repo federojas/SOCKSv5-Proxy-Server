@@ -76,7 +76,7 @@ usage(const char *progname) {
 void 
 parse_args(const int argc, char **argv, struct socks5args *args) {
 
-    memset(args, 0, sizeof(struct socks5args)); // sobre todo para setear en null los punteros de users
+    memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
     
     args->version = DEFAULT_VERSION_NUMBER;
     args->nusers = 0;
@@ -89,12 +89,9 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
     args->mng_port   = DEFAULT_MNG_PORT;
     args->mng_on_both = true;
     
-    args->stats.spoofing = false;
-    args->stats.authentication = false;
-    args->stats.bytes_transfered = 0;
-    args->stats.historic_connections = 0;
-    args->stats.current_connections = 0;
-
+    args->spoofing = false;
+    args->authentication = false;
+ 
     int c;
 
     while (true) {
@@ -116,7 +113,7 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                 args->mng_on_both = false;
                 break;
             case 'N':
-                args->stats.spoofing = false;
+                args->spoofing = false;
                 break;
             case 'p':
                 args->socks_port = port(optarg);
@@ -133,7 +130,7 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                     //COMO MANEJAMOS ADMINS??????
                     user(optarg, args->users + args->nusers);
                     args->nusers++;
-                    args->stats.authentication = true;
+                    args->authentication = true;
                 }
                 break;
             case 'v':
