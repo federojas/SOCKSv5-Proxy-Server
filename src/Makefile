@@ -9,6 +9,6 @@ all: ${OBJECTS}
 	$(CC) $(CFLAGS) -o ../socks5d main.c args.c $(OBJECTS)
 
 clean:
-	rm -r -f *.o ./parser/*.o ./parser/socksv5/*.o ./net_utils/*.o ./buffer/*.o ./nio/*.o ./selector/*.o ./stm/*.o ./statistics/*.o socks5d $(COMMON);
+	rm -r -f *.o ./parser/*.o ./parser/socksv5/*.o ./net_utils/*.o ./buffer/*.o ./nio/*.o ./selector/*.o ./stm/*.o ./statistics/*.o ./parser/pop3_sniffer/*.o ./logger/logger.o socks5d $(COMMON);
 
 .PHONY: all clean

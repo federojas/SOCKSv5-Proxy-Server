@@ -151,8 +151,7 @@ static const struct state_definition client_statbl[] = {
     {
         .state            = REQUEST_READ,
         .on_arrival       = request_init,
-        .on_read_ready     = request_read,
-        // request_close ? 
+        .on_read_ready    = request_read,
     },
     {
         .state            = REQUEST_RESOLV,
@@ -677,6 +676,7 @@ request_resolv_blocking(void * data) {
     struct selector_key *key = (struct selector_key *) data;
     struct socks5 *s = ATTACHMENT(key);
 
+    fprintf(stderr, "entramos al resolv blocking");
     pthread_detach(pthread_self());
     s->origin_resolution = 0;
 
@@ -693,13 +693,18 @@ request_resolv_blocking(void * data) {
     char buff[7]; //TODO 7??? HAY QUE DECIDIR EL TAMAÑO ACA?
     snprintf(buff, sizeof(buff), "%d", ntohs(s->client.request.request.dest_port));
 
+    fprintf(stderr, "antes del getaddrinfo");
     //TODO MANEJO ERRORES DE GETADDRINFO
     getaddrinfo(s->client.request.request.dest_addr.fqdn, buff, &hints, &s->origin_resolution);
 
+    fprintf(stderr, "despues del getaddrinfo");
+
     selector_notify_block(key->s, key->fd);
 
+    fprintf(stderr, "antes del free");
     free(data);
 
+    fprintf(stderr, "despues del free");
     return 0;
 }
 
@@ -747,7 +752,7 @@ request_process (struct selector_key* key, struct request_st* d) {
     switch (d->request.cmd) {
         case SOCKS5_REQ_CMD_CONNECT:
             // esto mejoraría enormemente de haber usado
-            // sockaddr_sto rage en el request
+            // sockaddr_storage en el request
             
             switch (d->request.dest_addr_type) {
                 case SOCKS5_REQ_ADDRTYPE_IPV4: {
@@ -832,13 +837,6 @@ request_read (struct selector_key *key) {
 
     return error ? ERROR : ret;
 }
-
-// static void
-// request_read_close(const unsigned state, struct selector_key *key) {
-//     struct request_st * d = &ATTACHMENT(key)->client.request;
-
-//     request_parser_close(&d->parser);
-// }
 
 
 static void 

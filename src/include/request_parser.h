@@ -88,9 +88,7 @@ bool request_parser_is_done(enum request_state state, bool *errored);
 
 char * request_parser_error_report(enum request_state state);
 
-void request_close(struct request_parser *p);
-
-extern int request_marshall(buffer *b, const enum socks5_response_status status, const enum socks5_addr_type atyp, const union socks5_addr addr,const in_port_t port );
+int request_marshall(buffer *b, const enum socks5_response_status status, const enum socks5_addr_type atyp, const union socks5_addr addr,const in_port_t port );
 
 enum socks5_response_status errno_to_socks(int e);
 
