@@ -21,6 +21,9 @@
 #include "netutils.h"
 #include "stm.h"
 #include "logger.h"
+#include "pop3_sniffer.h"
+
+extern struct socks5args socks5args;
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
@@ -203,7 +206,6 @@ struct socks5 {
     union {
         struct connecting         conn;
         struct copy               copy;
-
     } orig;
 
     /** buffers **/
@@ -216,6 +218,8 @@ struct socks5 {
     unsigned references;
 
     int error;
+
+    struct pop3_sniffer_parser pop3_sniffer;
 
     struct socks5 *next;
 };
@@ -966,8 +970,7 @@ static struct copy *fd_copy(struct selector_key *key)
     return *d->fd == key->fd ? d : d->other;
 }
 
-static void copy_init(const unsigned state, struct selector_key *key)
-{
+static void copy_init(struct selector_key *key) {
     struct copy *d = &ATTACHMENT(key)->client.copy;
 
     d->fd = &ATTACHMENT(key)->client_fd;
@@ -984,8 +987,7 @@ static void copy_init(const unsigned state, struct selector_key *key)
     d->other = &ATTACHMENT(key)->client.copy;
 }
 
-static unsigned copy_read(struct selector_key *key)
-{
+static unsigned copy_read(struct selector_key *key) {
     struct copy *d = fd_copy(key);
     size_t size;
     ssize_t n;
@@ -994,33 +996,31 @@ static unsigned copy_read(struct selector_key *key)
 
     uint8_t *ptr = buffer_write_ptr(b, &size);
     n = recv(key->fd, ptr, size, 0);
-    if (n <= 0)
-    {
+    if (n <= 0) {
         shutdown(*d->fd, SHUT_RD);
         d->duplex &= ~OP_READ;
-        if (*d->other->fd != -1)
-        {
+        if (*d->other->fd != -1) {
             shutdown(*d->other->fd, SHUT_WR);
             d->other->duplex &= ~OP_WRITE;
         }
     }
-    else
-    {
+    else {
+        if(socks5args->spoofing, is_origin(key)) {
+            pop3_sniffer(key, ptr, n);
+        }
         buffer_write_adv(b, n);
     }
 
     copy_compute_interests(key->s, d);
     copy_compute_interests(key->s, d->other);
-    if (d->duplex == OP_NOOP)
-    {
+    if (d->duplex == OP_NOOP) {
         ret = DONE;
     }
 
     return ret;
 }
 
-static unsigned copy_write(struct selector_key *key)
-{
+static unsigned copy_write(struct selector_key *key) {
     struct copy *d = fd_copy(key);
     size_t size;
     ssize_t n;
@@ -1029,8 +1029,7 @@ static unsigned copy_write(struct selector_key *key)
 
     uint8_t *ptr = buffer_read_ptr(b, &size);
     n = send(key->fd, ptr, size, MSG_NOSIGNAL);
-    if (n == -1)
-    {
+    if (n == -1) {
         shutdown(*d->fd, SHUT_WR);
         d->duplex &= ~OP_WRITE;
         if (*d->other->fd != -1)
@@ -1038,17 +1037,14 @@ static unsigned copy_write(struct selector_key *key)
             shutdown(*d->other->fd, SHUT_RD);
             d->other->duplex &= ~OP_READ;
         }
-    }
-    else
-    {
+    } else {
         buffer_read_adv(b, n);
     }
 
     copy_compute_interests(key->s, d);
     copy_compute_interests(key->s, d->other);
     
-    if (d->duplex == OP_NOOP)
-    {
+    if (d->duplex == OP_NOOP) {
         ret = DONE;
     }
 
@@ -1076,4 +1072,26 @@ static fd_interest copy_compute_interests(fd_selector s, struct copy *d)
     }
 
     return ret;
+}
+
+static void pop3_sniffer(struct selector_key *key, uint8_t *ptr, ssize_t size){
+    struct pop3_sniffer_parser *p = &ATTACHMENT(key)->pop3_sniffer_parser;
+    // Inicializo parser, si no lo estaba
+    if(!p->is_initiated)){
+        pop3_sniffer_parser_init(p);
+    }
+    if(!pop3_sniffer_parser_is_done(p)) {
+        size_t count;
+        uint8_t *pop3_ptr = buffer_write_ptr(&p->buffer, &count);
+    
+        if((unsigned) size <= count){
+            memcpy(pop3_ptr, ptr, size);
+            buffer_write_adv(&p->buffer,size);
+        }
+        else{
+            memcpy(pop3_ptr,ptr,count);
+            buffer_write_adv(&p->buffer,count);
+        }
+        pop3_sniffer_parser_consume(p);
+    }
 }
