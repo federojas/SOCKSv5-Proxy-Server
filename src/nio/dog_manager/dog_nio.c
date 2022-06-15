@@ -17,6 +17,21 @@
 #define ATTACHMENT(key) ((struct manager*)key->data)
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
+static void manager_close(struct selector_key *key);
+static struct manager *manager_new(int client_fd);
+static void dog_auth_init(struct selector_key *key);
+static unsigned dog_auth_read(struct selector_key *key);
+static unsigned dog_auth_write(struct selector_key *key);
+static void dog_cmd_init(struct selector_key *key);
+static unsigned dog_cmd_read(struct selector_key *key);
+static unsigned dog_cmd_process(struct cmd_st *d);
+static unsigned dog_cmd_write(struct selector_key *key);
+
+typedef int(*manager_function_handler)(struct cmd_st *d);
+
+manager_function_handler manager_get_functions[] = {list_users, historic_connections, concurrent_conections, bytes_qty, spoof_status, auth_status};
+manager_function_handler manager_alter_functions[] = {add_user, delete_user, toggle_spoof, toggle_auth};
+
 struct auth_st {
     buffer               *rb, *wb;
     auth_parser          parser;
@@ -28,8 +43,8 @@ struct auth_st {
 struct cmd_st {
     buffer *rb, *wb;
     dog_parser parser;
-    // uint8_t * resp;
-    // uint8_t resp_len;
+    uint8_t * response;
+    uint8_t response_len;
 };
 
 struct manager {
@@ -132,7 +147,7 @@ fail:
     free(state);
 }
 
-static void manager_close(struct selector_key *key){
+static void manager_close(struct selector_key *key) {
     if(key->data != NULL) {
         free(key->data);
         key->data = NULL;
@@ -180,7 +195,7 @@ static void dog_auth_init(struct selector_key *key) {
 }
          
 
-static unsigned dog_auth_read(struct selector_key *key){
+static unsigned dog_auth_read(struct selector_key *key) {
     unsigned ret = AUTH_READ;
     struct auth_st * d = &ATTACHMENT(key)->client.auth;
     bool error = false;
@@ -213,7 +228,7 @@ static unsigned dog_auth_read(struct selector_key *key){
     return error ? ERROR : ret;
 }
 
-static unsigned dog_auth_write(struct selector_key *key){
+static unsigned dog_auth_write(struct selector_key *key) {
     struct auth_st * d = &ATTACHMENT(key)->client.auth;
     unsigned ret = AUTH_WRITE;
     uint8_t *ptr;
@@ -247,11 +262,11 @@ static void dog_cmd_init(struct selector_key *key) {
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
     dog_parser_init(&d->parser);
-    // d->resp = NULL;
-    // d->resp_len = 0;
+    d->response = NULL;
+    d->response_len = 0;
 }
 
-static unsigned dog_cmd_read(struct selector_key *key){
+static unsigned dog_cmd_read(struct selector_key *key) {
     struct cmd_st * d = &ATTACHMENT(key)->client.cmd;
 
     buffer * buff = d->rb;
@@ -284,35 +299,59 @@ static unsigned dog_cmd_read(struct selector_key *key){
     return error ? ERROR : ret;
 }
 
+static unsigned dog_cmd_process(struct cmd_st *d) {
+    unsigned ret = DOG_CMD_WRITE;
+    int nwrite = 0;
+    if(d->parser.request_type == 0x02) {
+        *d->reply_status = STATUS_SUCCEDED;
+    } else {
+        if(d->parser.request_type == 0x00)
+            nwrite = manager_get_functions[d->parser.cmd.get_cmd](d);
+        else 
+            nwrite = manager_alter_functions[d->parser.cmd.alter_cmd](d);
+    } 
+    if(nwrite == -1) {
+        *d->reply_status = STATUS_GENERAL_SERVER_FAILURE;
+        ret = ERROR;
+    }
+    if(-1 == dog_marshall(d->wb,*d->parser->reply_status,d->response,nwrite)) {
+        ret = ERROR;
+    }
+    return ret;
+}
 
+static unsigned dog_cmd_write(struct selector_key *key) {
+    struct cmd_st * d = &ATTACHMENT(key)->client.cmd;
 
-static unsigned cmd_write(struct selector_key *key){
-    struct cmd_st * d = &MNG_ATTACHMENT(key)->client.cmd;
-    unsigned ret = CMD_WRITE;
+    buffer *b = d->wb;
+    unsigned ret = DOG_CMD_WRITE;
     uint8_t *ptr;
     size_t count;
     ssize_t n;
-    buffer *buff = d->wb;
-    ptr = buffer_read_ptr(buff,&count);
+    ptr = buffer_read_ptr(b,&count);
     n = send(key->fd,ptr,count,MSG_NOSIGNAL);
-    if (n > 0){
-        if(d->parser.type == 0x02){
+
+    if (n == -1)
+    {
+        ret = ERROR;
+    }
+    else
+    {
+        if(d->parser.type == 0x02) {
             ret = DONE;
-        }
-        else{
-            buffer_read_adv(buff,n);
-            if(!buffer_can_read(buff)){
+        } else {
+            buffer_read_adv(b,n);
+            if(!buffer_can_read(b)) 
+            {
                 if(selector_set_interest_key(key,OP_READ) == SELECTOR_SUCCESS){
-                    ret = CMD_READ;
+                    ret = DOG_CMD_READ;
                 }
-                else{
+                else {
                     ret = ERROR;
                 }
             }
         }
     }
-    else{
-        ret = ERROR;
-    }
+
     return ret;
 }
