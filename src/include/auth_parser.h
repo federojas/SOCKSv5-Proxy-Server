@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include "buffer.h"
 
-#define CHAR_MAX_LENGTH 256
+#define CREDENTIALS_MAX_LENGTH 256
 #define AUTH_SUCCESS 0x00
 #define AUTH_FAIL 0x01
 #define AUTH_BAD_CREDENTIALS 0x02
@@ -34,12 +34,12 @@ typedef enum auth_trap_cause {
 
 typedef struct username {
     uint8_t username_len;
-    char username[CHAR_MAX_LENGTH];
+    char username[CREDENTIALS_MAX_LENGTH];
 } username;
 
 typedef struct password {
     uint8_t password_len;
-    char password[CHAR_MAX_LENGTH];
+    char password[CREDENTIALS_MAX_LENGTH];
 } password;
 
 typedef struct auth_parser {
