@@ -1,5 +1,5 @@
-#ifndef DOG_SERVER_H
-#define DOG_SERVER_H
+#ifndef DOG_NIO_H
+#define DOG_NIO_H
 
 #include "selector.h"
 

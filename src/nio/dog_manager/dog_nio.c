@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include "args.h"
 #include "logger.h"
-#include "socksv5_nio.h"
+#include "dog_nio.h"
 
 struct manager {
 
