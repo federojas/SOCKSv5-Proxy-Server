@@ -311,9 +311,9 @@ static struct socks5 *socks5_new(int client_fd) {
         ret->next = 0;
     }
     if(ret == NULL) {
-        error_message="failed to create socks";
-        printf("%s\n",error_message);//TODO: ERROR HANDLER
-        return NULL; //TODO: error message?
+        error_message="Failed to create socks";
+        log_print(LOG_ERROR, error_message);
+        return NULL;
     }
     
     memset(ret, 0x00, sizeof(*ret));
@@ -428,7 +428,6 @@ socksv5_passive_accept(struct selector_key *key) {
         // tal vez deberiamos apagar accept() hasta que detectemos
         // que se liberÃ³ alguna conexiÃ³n.
         error_message = "Socks5 Passive: new socks5 connection failed";
-        printf("%s\n",error_message);//TODO: ERROR HANDLER
         goto fail;
     }
 
@@ -440,18 +439,16 @@ socksv5_passive_accept(struct selector_key *key) {
     ss = selector_register(key->s, client, &socks5_handler, OP_READ, state);
     if(SELECTOR_SUCCESS != ss) {
         error_message = "Socks5 Passive: selector error register";
-        printf("%s\n",error_message);//TODO: ERROR HANDLER
-
         goto fail;
     }
 
-    //TODO ACA SEGURO FALTAN COSAS
     return ;
 
 fail:
     if(client != -1) {
         close(client);
     }
+    log_print(LOG_ERROR, error_message);
     socks5_destroy(state);
 }
 
@@ -864,6 +861,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
     int *fd                             = d->origin_fd;
 
     //TODO: QUE HACER SI FD ES UN VALOR NO DESEADO
+    //TODO LOG ERROR
 
     // Creo el socket
     *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0);
@@ -895,7 +893,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
             }
             ATTACHMENT(key)->references += 1;
         } else {
-            // status = errno_to_socks(errno); TODO: QUE ES ESTO
+            status = errno_to_socks(errno);
             error = true;
             goto finally;
         }
