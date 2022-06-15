@@ -27,6 +27,7 @@ static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
 static struct socks5 * pool = 0;
 extern struct socks5args socks5args;
+extern struct socks5_stats socks5_stats;
 
 /** maquina de estados general */
 enum socks_v5state {
@@ -444,7 +445,7 @@ fail:
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t *selected  = p->data;
-    if(socks5args.stats.authentication == 1) {
+    if(socks5args.authentication == 1) {
         if(method == METHOD_AUTH_REQ) 
             *selected = method;
     } else {
@@ -1040,6 +1041,7 @@ static unsigned copy_write(struct selector_key *key)
     else
     {
         buffer_read_adv(b, n);
+        add_bytes_sent(n);
     }
 
     copy_compute_interests(key->s, d);
