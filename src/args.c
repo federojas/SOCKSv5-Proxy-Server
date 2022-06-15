@@ -89,7 +89,7 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
     args->mng_port   = DEFAULT_MNG_PORT;
     args->mng_on_both = true;
     
-    args->spoofing = false;
+    args->spoofing = true;
     args->authentication = false;
  
     int c;

@@ -9,7 +9,6 @@
 #include <pthread.h>
 
 #include <stdint.h> // SIZE_MAX
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -292,7 +291,6 @@ selector_new(const size_t initial_elements) {
     if(ret != NULL) {
         memset(ret, 0x00, size);
         ret->master_t.tv_sec  = conf.select_timeout.tv_sec;
-        ret->master_t.tv_nsec = conf.select_timeout.tv_nsec;
         assert(ret->max_fd == 0);
         ret->resolution_jobs  = 0;
         pthread_mutex_init(&ret->resolution_mutex, 0);
@@ -343,7 +341,7 @@ selector_register(fd_selector        s,
     }
     // 1. tenemos espacio?
     size_t ufd = (size_t)fd;
-    if(ufd > s->fd_size) {
+    if(ufd >= s->fd_size) {
         ret = ensure_capacity(s, ufd);
         if(SELECTOR_SUCCESS != ret) {
             goto finally;
@@ -465,7 +463,7 @@ handle_iteration(fd_selector s) {
                     }
                 }
             }
-            if(FD_ISSET(i, &s->slave_w)) {
+            if(FD_ISSET(item->fd, &s->slave_w)) {
                 if(OP_WRITE & item->interest) {
                     if(0 == item->handler->handle_write) {
                         assert(("OP_WRITE arrived but no handler. bug!" == 0));
@@ -484,18 +482,17 @@ handle_block_notifications(fd_selector s) {
         .s = s,
     };
     pthread_mutex_lock(&s->resolution_mutex);
-    for(struct blocking_job *j = s->resolution_jobs;
-        j != NULL ;
-        j  = j->next) {
+    for (struct blocking_job *j = s->resolution_jobs;j != NULL;) {
 
         struct item *item = s->fds + j->fd;
-        if(ITEM_USED(item)) {
-            key.fd   = item->fd;
+        if (ITEM_USED(item)) {
+            key.fd = item->fd;
             key.data = item->data;
             item->handler->handle_block(&key);
         }
-
-        free(j);
+        struct blocking_job * previous = j;
+        j=j->next;
+        free(previous);
     }
     s->resolution_jobs = 0;
     pthread_mutex_unlock(&s->resolution_mutex);

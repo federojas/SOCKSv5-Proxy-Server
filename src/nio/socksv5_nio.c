@@ -21,6 +21,9 @@
 #include "netutils.h"
 #include "stm.h"
 #include "logger.h"
+#include "pop3_sniffer.h"
+
+extern struct socks5args socks5args;
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
@@ -28,6 +31,8 @@ static unsigned pool_size = 0;
 static struct socks5 * pool = 0;
 extern struct socks5args socks5args;
 extern struct socks5_stats socks5_stats;
+
+// TODO: REVISAR SIEMPRE EL RESULTADO DE SELECTOR_SET_INTEREST
 
 /** maquina de estados general */
 enum socks_v5state {
@@ -146,8 +151,7 @@ static const struct state_definition client_statbl[] = {
     {
         .state            = REQUEST_READ,
         .on_arrival       = request_init,
-        .on_read_ready     = request_read,
-        // request_close ? 
+        .on_read_ready    = request_read,
     },
     {
         .state            = REQUEST_RESOLV,
@@ -205,7 +209,6 @@ struct socks5 {
     union {
         struct connecting         conn;
         struct copy               copy;
-
     } orig;
 
     /** buffers **/
@@ -218,6 +221,8 @@ struct socks5 {
     unsigned references;
 
     int error;
+
+    struct pop3_sniffer_parser pop3_sniffer;
 
     struct socks5 *next;
 };
@@ -307,9 +312,9 @@ static struct socks5 *socks5_new(int client_fd) {
         ret->next = 0;
     }
     if(ret == NULL) {
-        error_message="failed to create socks";
-        printf("%s\n",error_message);//TODO: ERROR HANDLER
-        return NULL; //TODO: error message?
+        error_message="Failed to create socks";
+        log_print(LOG_ERROR, error_message);
+        return NULL;
     }
     
     memset(ret, 0x00, sizeof(*ret));
@@ -424,7 +429,6 @@ socksv5_passive_accept(struct selector_key *key) {
         // tal vez deberiamos apagar accept() hasta que detectemos
         // que se liberÃ³ alguna conexiÃ³n.
         error_message = "Socks5 Passive: new socks5 connection failed";
-        printf("%s\n",error_message);//TODO: ERROR HANDLER
         goto fail;
     }
 
@@ -436,18 +440,16 @@ socksv5_passive_accept(struct selector_key *key) {
     ss = selector_register(key->s, client, &socks5_handler, OP_READ, state);
     if(SELECTOR_SUCCESS != ss) {
         error_message = "Socks5 Passive: selector error register";
-        printf("%s\n",error_message);//TODO: ERROR HANDLER
-
         goto fail;
     }
 
-    //TODO ACA SEGURO FALTAN COSAS
     return ;
 
 fail:
     if(client != -1) {
         close(client);
     }
+    log_print(LOG_ERROR, error_message);
     socks5_destroy(state);
 }
 
@@ -693,6 +695,7 @@ request_resolv_blocking(void * data) {
     //TODO MANEJO ERRORES DE GETADDRINFO
     getaddrinfo(s->client.request.request.dest_addr.fqdn, buff, &hints, &s->origin_resolution);
 
+
     selector_notify_block(key->s, key->fd);
 
     free(data);
@@ -704,7 +707,6 @@ static unsigned
 request_resolv_done(struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
     struct socks5 *s = ATTACHMENT(key);
-
     if(s->origin_resolution == 0) {
         d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     } else {
@@ -745,7 +747,7 @@ request_process (struct selector_key* key, struct request_st* d) {
     switch (d->request.cmd) {
         case SOCKS5_REQ_CMD_CONNECT:
             // esto mejoraría enormemente de haber usado
-            // sockaddr_sto rage en el request
+            // sockaddr_storage en el request
             
             switch (d->request.dest_addr_type) {
                 case SOCKS5_REQ_ADDRTYPE_IPV4: {
@@ -765,9 +767,6 @@ request_process (struct selector_key* key, struct request_st* d) {
                     break;
 
                 } case SOCKS5_REQ_ADDRTYPE_DOMAIN: {
-                    // OBS: la resolucion de nombres es bloqueante
-                    // no la podemos acceder aca mismo
-                    // por lo que habra que hacer un hilo
                     struct selector_key* k = malloc(sizeof(*key));
                     if (k == NULL) {
                         ret = REQUEST_WRITE;
@@ -778,7 +777,6 @@ request_process (struct selector_key* key, struct request_st* d) {
                         if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
                             ret = REQUEST_WRITE;
                             d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-                            // falta liberar la memoria del selector_key k ?
                             selector_set_interest_key(key, OP_WRITE);
                         } else {
                             ret = REQUEST_RESOLV;
@@ -834,13 +832,6 @@ request_read (struct selector_key *key) {
     return error ? ERROR : ret;
 }
 
-// static void
-// request_read_close(const unsigned state, struct selector_key *key) {
-//     struct request_st * d = &ATTACHMENT(key)->client.request;
-
-//     request_parser_close(&d->parser);
-// }
-
 
 static void 
 request_connecting_init(const unsigned state, struct selector_key *key) {
@@ -860,6 +851,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
     int *fd                             = d->origin_fd;
 
     //TODO: QUE HACER SI FD ES UN VALOR NO DESEADO
+    //TODO LOG ERROR
 
     // Creo el socket
     *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0);
@@ -872,18 +864,13 @@ request_connect (struct selector_key *key, struct request_st *d) {
         goto finally;
     }
     
-    // Inicio la conexion 
     if (-1 == connect(*fd, (const struct sockaddr *)&ATTACHMENT (key)->origin_addr, ATTACHMENT (key)->origin_addr_len)) {
         if(errno == EINPROGRESS) {
-            //  es esperable,tenemos que esperar a la conexión
-            // dejamos de depollear el socket del cliente
             selector_status st = selector_set_interest_key(key, OP_NOOP);
             if (SELECTOR_SUCCESS != st) {
                 error = true;
                 goto finally;
             }
-
-            // esperamos la conexion en el nuevo socket
             st = selector_register(key->s, *fd, &socks5_handler, OP_WRITE, key->data);
             if (SELECTOR_SUCCESS != st) {
                 error = true;
@@ -891,13 +878,11 @@ request_connect (struct selector_key *key, struct request_st *d) {
             }
             ATTACHMENT(key)->references += 1;
         } else {
-            // status = errno_to_socks(errno); TODO: QUE ES ESTO
+            status = errno_to_socks(errno);
             error = true;
             goto finally;
         }
     } else {
-        // estamos conectados sin esperar... no parece posible
-        // saltariamos directamente a COPY
         abort();
     }
 
@@ -921,31 +906,29 @@ request_connecting(struct selector_key *key)
 {
     int error;
     socklen_t len = sizeof(error);
-    // struct connecting *d = &ATTACHMENT(key)->orig.conn;
+    unsigned ret = REQUEST_CONNECTING;
     struct socks5 *d = ATTACHMENT(key);
 
-    if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-        *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-    } else {
-        if (error == 0) {
-            *d->orig.conn.status = SOCKS5_STATUS_SUCCEED;
-            *d->orig.conn.origin_fd = key->fd;
+    if (getsockopt(*d->orig.conn.origin_fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
+        selector_set_interest(key->s, *d->orig.conn.client_fd, OP_WRITE);   
+        if(error == 0) {
+            inc_current_connections(); // conn with origin
+            d->client.request.status = SOCKS5_STATUS_SUCCEED;
         } else {
-            *d->orig.conn.status = errno_to_socks(error);
+            d->client.request.status = errno_to_socks(error);
+            selector_set_interest_key(key, OP_NOOP);
         }
-    }
 
-    if(-1 == request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
-         *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-         abort(); // el buffer tiene que ser mas grande en la variable
+        if(-1 != request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
+            selector_set_interest(key->s, *d->orig.conn.origin_fd, OP_READ);
+            ret = REQUEST_WRITE;
+        }
+        else {
+            ret = ERROR;
+        }
     } 
 
-    selector_status s = 0;
-    s |= selector_set_interest      (key->s,*d->orig.conn.client_fd, OP_WRITE);
-    s |= selector_set_interest_key  (key, OP_NOOP);
-
-    // Mandamos la respuesta al cliente
-    return SELECTOR_SUCCESS == s ? REQUEST_WRITE : ERROR;
+    return ret;
 }
 
 static unsigned request_write(struct selector_key *key)
@@ -971,18 +954,10 @@ static unsigned request_write(struct selector_key *key)
 
         if (!buffer_can_read(b))
         {
-            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ))
-            {
-                ret = COPY;
-            }
-            else
-            {
-                ret = ERROR;
-            }
+            selector_set_interest_key(key, OP_READ);
+            ret = COPY;
         }
     }
-
-        
 
     return ret;
 }
@@ -997,8 +972,28 @@ static struct copy *fd_copy(struct selector_key *key)
     return *d->fd == key->fd ? d : d->other;
 }
 
-static void copy_init(const unsigned state, struct selector_key *key)
-{
+static void pop3_sniffer(struct selector_key *key, uint8_t *ptr, ssize_t size) {
+    struct pop3_sniffer_parser *p = &ATTACHMENT(key)->pop3_sniffer;
+    if(!p->is_initiated) {
+        pop3_sniffer_parser_init(p);
+    }
+    if(!pop3_sniffer_parser_is_done(p)) {
+        size_t count;
+        uint8_t *pop3_ptr = buffer_write_ptr(&p->buffer, &count);
+    
+        if((unsigned) size <= count){
+            memcpy(pop3_ptr, ptr, size);
+            buffer_write_adv(&p->buffer,size);
+        }
+        else{
+            memcpy(pop3_ptr,ptr,count);
+            buffer_write_adv(&p->buffer,count);
+        }
+        pop3_sniffer_parser_consume(p);
+    }
+}
+
+static void copy_init(const unsigned state, struct selector_key *key) {
     struct copy *d = &ATTACHMENT(key)->client.copy;
 
     d->fd = &ATTACHMENT(key)->client_fd;
@@ -1015,8 +1010,7 @@ static void copy_init(const unsigned state, struct selector_key *key)
     d->other = &ATTACHMENT(key)->client.copy;
 }
 
-static unsigned copy_read(struct selector_key *key)
-{
+static unsigned copy_read(struct selector_key *key) {
     struct copy *d = fd_copy(key);
     size_t size;
     ssize_t n;
@@ -1025,34 +1019,33 @@ static unsigned copy_read(struct selector_key *key)
 
     uint8_t *ptr = buffer_write_ptr(b, &size);
     n = recv(key->fd, ptr, size, 0);
-    if (n <= 0)
-    {
+    if (n <= 0) {
         shutdown(*d->fd, SHUT_RD);
         d->duplex &= ~OP_READ;
-        if (*d->other->fd != -1)
-        {
+        if (*d->other->fd != -1) {
             shutdown(*d->other->fd, SHUT_WR);
             d->other->duplex &= ~OP_WRITE;
         }
     }
-    else
-    {
+    else {
+        if(socks5args.spoofing) {
+            //TODO chequear key???
+            pop3_sniffer(key, ptr, n);
+        }
         buffer_write_adv(b, n);
 
     }
 
     copy_compute_interests(key->s, d);
     copy_compute_interests(key->s, d->other);
-    if (d->duplex == OP_NOOP)
-    {
+    if (d->duplex == OP_NOOP) {
         ret = DONE;
     }
 
     return ret;
 }
 
-static unsigned copy_write(struct selector_key *key)
-{
+static unsigned copy_write(struct selector_key *key) {
     struct copy *d = fd_copy(key);
     size_t size;
     ssize_t n;
@@ -1061,8 +1054,7 @@ static unsigned copy_write(struct selector_key *key)
 
     uint8_t *ptr = buffer_read_ptr(b, &size);
     n = send(key->fd, ptr, size, MSG_NOSIGNAL);
-    if (n == -1)
-    {
+    if (n == -1) {
         shutdown(*d->fd, SHUT_WR);
         d->duplex &= ~OP_WRITE;
         if (*d->other->fd != -1)
@@ -1070,18 +1062,19 @@ static unsigned copy_write(struct selector_key *key)
             shutdown(*d->other->fd, SHUT_RD);
             d->other->duplex &= ~OP_READ;
         }
-    }
-    else
-    {
-        buffer_read_adv(b, n);
+    } else {
         add_bytes_transferred(n);
+        //TODO chequear key???
+        if(socks5args.spoofing){
+            pop3_sniffer(key,ptr,n);
+        }
+        buffer_read_adv(b, n);
     }
 
     copy_compute_interests(key->s, d);
     copy_compute_interests(key->s, d->other);
     
-    if (d->duplex == OP_NOOP)
-    {
+    if (d->duplex == OP_NOOP) {
         ret = DONE;
     }
 
@@ -1112,3 +1105,4 @@ static fd_interest copy_compute_interests(fd_selector s, struct copy *d)
 
     return ret;
 }
+
