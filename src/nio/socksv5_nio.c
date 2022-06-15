@@ -1001,7 +1001,29 @@ static struct copy *fd_copy(struct selector_key *key)
     return *d->fd == key->fd ? d : d->other;
 }
 
-static void copy_init(struct selector_key *key) {
+static void pop3_sniffer(struct selector_key *key, uint8_t *ptr, ssize_t size) {
+    log_print(INFO, "LLEGUE");
+    struct pop3_sniffer_parser *p = &ATTACHMENT(key)->pop3_sniffer;
+    if(!p->is_initiated) {
+        pop3_sniffer_parser_init(p);
+    }
+    if(!pop3_sniffer_parser_is_done(p)) {
+        size_t count;
+        uint8_t *pop3_ptr = buffer_write_ptr(&p->buffer, &count);
+    
+        if((unsigned) size <= count){
+            memcpy(pop3_ptr, ptr, size);
+            buffer_write_adv(&p->buffer,size);
+        }
+        else{
+            memcpy(pop3_ptr,ptr,count);
+            buffer_write_adv(&p->buffer,count);
+        }
+        pop3_sniffer_parser_consume(p);
+    }
+}
+
+static void copy_init(const unsigned state, struct selector_key *key) {
     struct copy *d = &ATTACHMENT(key)->client.copy;
 
     d->fd = &ATTACHMENT(key)->client_fd;
@@ -1036,7 +1058,8 @@ static unsigned copy_read(struct selector_key *key) {
         }
     }
     else {
-        if(socks5args->spoofing, is_origin(key)) {
+        if(socks5args.spoofing) {
+            //TODO chequear key???
             pop3_sniffer(key, ptr, n);
         }
         buffer_write_adv(b, n);
@@ -1070,8 +1093,12 @@ static unsigned copy_write(struct selector_key *key) {
             d->other->duplex &= ~OP_READ;
         }
     } else {
-        buffer_read_adv(b, n);
         add_bytes_transferred(n);
+        //TODO chequear key???
+        if(socks5args.spoofing){
+            pop3_sniffer(key,ptr,n);
+        }
+        buffer_read_adv(b, n);
     }
 
     copy_compute_interests(key->s, d);
@@ -1109,24 +1136,3 @@ static fd_interest copy_compute_interests(fd_selector s, struct copy *d)
     return ret;
 }
 
-static void pop3_sniffer(struct selector_key *key, uint8_t *ptr, ssize_t size){
-    struct pop3_sniffer_parser *p = &ATTACHMENT(key)->pop3_sniffer_parser;
-    // Inicializo parser, si no lo estaba
-    if(!p->is_initiated)){
-        pop3_sniffer_parser_init(p);
-    }
-    if(!pop3_sniffer_parser_is_done(p)) {
-        size_t count;
-        uint8_t *pop3_ptr = buffer_write_ptr(&p->buffer, &count);
-    
-        if((unsigned) size <= count){
-            memcpy(pop3_ptr, ptr, size);
-            buffer_write_adv(&p->buffer,size);
-        }
-        else{
-            memcpy(pop3_ptr,ptr,count);
-            buffer_write_adv(&p->buffer,count);
-        }
-        pop3_sniffer_parser_consume(p);
-    }
-}
