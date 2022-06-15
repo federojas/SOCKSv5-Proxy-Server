@@ -149,6 +149,7 @@ bool pop3_sniffer_parser_is_done(struct pop3_sniffer_parser *p) {
 }
 
 enum pop3_sniffer_state pop3_sniffer_parser_consume(struct pop3_sniffer_parser *p) {
+    fprintf(stderr,"entre al consume");
     while(buffer_can_read(&p->buffer) && !pop3_sniffer_parser_is_done(p)) {
         uint8_t byte = buffer_read(&p->buffer);
         p->current_state = pop3_sniffer_parser_feed(p, byte);

@@ -32,6 +32,8 @@ static struct socks5 * pool = 0;
 extern struct socks5args socks5args;
 extern struct socks5_stats socks5_stats;
 
+// TODO: REVISAR SIEMPRE EL RESULTADO DE SELECTOR_SET_INTEREST
+
 /** maquina de estados general */
 enum socks_v5state {
     HELLO_READ,
@@ -705,7 +707,6 @@ static unsigned
 request_resolv_done(struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
     struct socks5 *s = ATTACHMENT(key);
-
     if(s->origin_resolution == 0) {
         d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
     } else {
@@ -766,9 +767,6 @@ request_process (struct selector_key* key, struct request_st* d) {
                     break;
 
                 } case SOCKS5_REQ_ADDRTYPE_DOMAIN: {
-                    // OBS: la resolucion de nombres es bloqueante
-                    // no la podemos acceder aca mismo
-                    // por lo que habra que hacer un hilo
                     struct selector_key* k = malloc(sizeof(*key));
                     if (k == NULL) {
                         ret = REQUEST_WRITE;
@@ -874,18 +872,13 @@ request_connect (struct selector_key *key, struct request_st *d) {
         goto finally;
     }
     
-    // Inicio la conexion 
     if (-1 == connect(*fd, (const struct sockaddr *)&ATTACHMENT (key)->origin_addr, ATTACHMENT (key)->origin_addr_len)) {
         if(errno == EINPROGRESS) {
-            //  es esperable,tenemos que esperar a la conexión
-            // dejamos de depollear el socket del cliente
             selector_status st = selector_set_interest_key(key, OP_NOOP);
             if (SELECTOR_SUCCESS != st) {
                 error = true;
                 goto finally;
             }
-
-            // esperamos la conexion en el nuevo socket
             st = selector_register(key->s, *fd, &socks5_handler, OP_WRITE, key->data);
             if (SELECTOR_SUCCESS != st) {
                 error = true;
@@ -898,8 +891,6 @@ request_connect (struct selector_key *key, struct request_st *d) {
             goto finally;
         }
     } else {
-        // estamos conectados sin esperar... no parece posible
-        // saltariamos directamente a COPY
         abort();
     }
 
@@ -923,31 +914,29 @@ request_connecting(struct selector_key *key)
 {
     int error;
     socklen_t len = sizeof(error);
-    // struct connecting *d = &ATTACHMENT(key)->orig.conn;
+    unsigned ret = REQUEST_CONNECTING;
     struct socks5 *d = ATTACHMENT(key);
 
-    if (getsockopt(key->fd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-        *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-    } else {
-        if (error == 0) {
-            *d->orig.conn.status = SOCKS5_STATUS_SUCCEED;
-            *d->orig.conn.origin_fd = key->fd;
+    if (getsockopt(*d->orig.conn.origin_fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
+        selector_set_interest(key->s, *d->orig.conn.client_fd, OP_WRITE);   
+        if(error == 0) {
+            inc_current_connections(); // conn with origin
+            d->client.request.status = SOCKS5_STATUS_SUCCEED;
         } else {
-            *d->orig.conn.status = errno_to_socks(error);
+            d->client.request.status = errno_to_socks(error);
+            selector_set_interest_key(key, OP_NOOP);
         }
-    }
 
-    if(-1 == request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
-         *d->orig.conn.status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-         abort(); // el buffer tiene que ser mas grande en la variable
+        if(-1 != request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
+            selector_set_interest(key->s, *d->orig.conn.origin_fd, OP_READ);
+            ret = REQUEST_WRITE;
+        }
+        else {
+            ret = ERROR;
+        }
     } 
 
-    selector_status s = 0;
-    s |= selector_set_interest      (key->s,*d->orig.conn.client_fd, OP_WRITE);
-    s |= selector_set_interest_key  (key, OP_NOOP);
-
-    // Mandamos la respuesta al cliente
-    return SELECTOR_SUCCESS == s ? REQUEST_WRITE : ERROR;
+    return ret;
 }
 
 static unsigned request_write(struct selector_key *key)
@@ -973,18 +962,10 @@ static unsigned request_write(struct selector_key *key)
 
         if (!buffer_can_read(b))
         {
-            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ))
-            {
-                ret = COPY;
-            }
-            else
-            {
-                ret = ERROR;
-            }
+            selector_set_interest_key(key, OP_READ);
+            ret = COPY;
         }
     }
-
-        
 
     return ret;
 }
@@ -1000,7 +981,6 @@ static struct copy *fd_copy(struct selector_key *key)
 }
 
 static void pop3_sniffer(struct selector_key *key, uint8_t *ptr, ssize_t size) {
-    log_print(INFO, "LLEGUE");
     struct pop3_sniffer_parser *p = &ATTACHMENT(key)->pop3_sniffer;
     if(!p->is_initiated) {
         pop3_sniffer_parser_init(p);
