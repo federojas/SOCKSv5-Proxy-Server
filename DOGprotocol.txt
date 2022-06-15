@@ -143,6 +143,7 @@ STATUS refers to the request status, and its values can be:
    o 0x01 general server failure
    o 0x02 unsupported type
    o 0x03 unsupported command
+   o 0x04 invalid argument
 
 6.  GET Commands
 
