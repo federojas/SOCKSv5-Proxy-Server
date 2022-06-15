@@ -155,7 +155,7 @@ int dog_marshall(buffer* buffer, const uint8_t status, uint8_t *response, size_t
 
     buffer_write_adv(buffer,1);
 
-    if(nwrite > 0){
+    if(nwrite > 0) {
         memcpy(buff+1, response, nwrite);
         buffer_write_adv(buffer, nwrite);
         free(response);
