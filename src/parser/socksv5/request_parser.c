@@ -273,7 +273,7 @@ extern int request_marshall(buffer *b, const enum socks5_response_status status,
         len+=addr_size;
     break;
     default:
-        log_print(LOG_ERROR,"invalid address type in request marshall");
+        log_print(LOG_ERROR,"Invalid address type in request marshall");
         return -1;
         break;
     }
