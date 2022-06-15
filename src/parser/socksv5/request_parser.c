@@ -106,7 +106,6 @@ static request_state dstaddr(request_parser *p, const uint8_t c) {
     } else {
         next_state = REQUEST_DSTADDR;
     }
-    fprintf(stderr," la direccion es %s", p->request->dest_addr.fqdn);
     return next_state;
 }
 
@@ -125,8 +124,6 @@ void request_parser_init(request_parser *p) {
 }
 
 request_state request_parser_feed(request_parser *p, uint8_t byte) {
-    fprintf(stderr,"req parser feed byte: %c", (char) byte);
-    fprintf(stderr,"MI STATE ES: %d", p->current_state);
     switch (p->current_state)
     {
         case REQUEST_VERSION:
@@ -241,7 +238,6 @@ int request_marshall(buffer *b, const enum socks5_response_status status, const 
     int addr_size=0;
     uint8_t *aux=NULL;
 
-    fprintf(stderr, "llegue al marshall");
     /* vamos switcheando entre los diferentes tipos, y en base al tipo de address
     sabemos que hay que ponerle a los lugares restantes de buff*/
     switch (atyp)
