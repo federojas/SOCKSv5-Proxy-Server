@@ -14,8 +14,8 @@ typedef enum pop3_sniffer_state {
     POP3_READ_USER,
     POP3_PASS,
     POP3_READ_PASS,
-    POP3_CHECK,  
-    POP3_TRAP
+    POP3_CHECK_OK,  
+    POP3_TRAP,
     POP3_SUCCESS
 } pop3_sniffer_state;
 
@@ -25,10 +25,10 @@ typedef struct pop3_sniffer_parser {
     pop3_sniffer_state current_state;
     bool is_initiated;
     buffer buffer;
-    char username[MAX_CREDENTIAL_SIZE];
-    char password[MAX_CREDENTIAL_SIZE];
-    uint8_t remaining_bytes;
-    uint8_t read_bytes;
+    char username[CREDENTIALS_MAX_LENGTH];
+    char password[CREDENTIALS_MAX_LENGTH];
+    uint16_t remaining_bytes;
+    uint16_t read_bytes;
 } pop3_sniffer_parser;
 
 void pop3_sniffer_parser_init(pop3_sniffer_parser *p);
