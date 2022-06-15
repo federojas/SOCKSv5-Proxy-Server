@@ -12,6 +12,7 @@
 #include "buffer.h"
 #include "stm.h"
 #include "auth_parser.h"
+#include "dog_parser.h"
 
 #define ATTACHMENT(key) ((struct manager*)key->data)
 #define N(x) (sizeof(x)/sizeof((x)[0]))
@@ -24,6 +25,13 @@ struct auth_st {
     uint8_t              status;
 };
 
+struct cmd_st {
+    buffer *rb, *wb;
+    dog_parser parser;
+    // uint8_t * resp;
+    // uint8_t resp_len;
+};
+
 struct manager {
 
     struct sockaddr_storage       client_addr;
@@ -34,7 +42,7 @@ struct manager {
 
     union {
         struct auth_st            auth;
-        struct cmd_St             cmd;
+        struct cmd_st             cmd;
     } client;
 
     uint8_t raw_buff_a[BUFFER_SIZE], raw_buff_b[BUFFER_SIZE];
@@ -156,7 +164,11 @@ static struct manager *manager_new(int client_fd) {
     return ret;
 }
    
-// ////////////////  AUTH  ////////////////
+// //////////////// DOG  AUTH  //////////////// 
+
+/*
+Dado que nuestro protocolo esta basado en el rfc1929, el parsing de autenticacion es analogo al de socks5
+*/
 
 static void dog_auth_init(struct selector_key *key) {
     struct auth_st *d = &ATTACHMENT(key)->client.auth;
@@ -228,5 +240,79 @@ static unsigned dog_auth_write(struct selector_key *key){
     return ret;
 }
 
+// //////////////// DOG CMD  //////////////// 
 
-    
+static void dog_cmd_init(struct selector_key *key) {
+    struct cmd_st *d = &ATTACHMENT(key)->client.cmd;
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->wb = &(ATTACHMENT(key)->write_buffer);
+    dog_parser_init(&d->parser);
+    // d->resp = NULL;
+    // d->resp_len = 0;
+}
+
+static unsigned dog_cmd_read(struct selector_key *key){
+    struct cmd_st * d = &ATTACHMENT(key)->client.cmd;
+
+    buffer * buff = d->rb;
+    unsigned ret = DOG_CMD_READ;
+    bool error = false;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    ptr = buffer_write_ptr(buff,&count);
+    n = recv(key->fd,ptr,count,0);
+    if (n > 0){
+        buffer_write_adv(buff,n);
+        int st = dog_parser_consume(buff,&d->parser,&error);
+        if(dog_parser_is_done(st,0)){
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
+                ret = dog_cmd_process(d);
+            }
+            else{
+                ret = ERROR;
+            }
+        }
+
+    }
+    else{
+        ret = ERROR;
+    }
+
+
+    return error ? ERROR : ret;
+}
+
+
+
+static unsigned cmd_write(struct selector_key *key){
+    struct cmd_st * d = &MNG_ATTACHMENT(key)->client.cmd;
+    unsigned ret = CMD_WRITE;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+    buffer *buff = d->wb;
+    ptr = buffer_read_ptr(buff,&count);
+    n = send(key->fd,ptr,count,MSG_NOSIGNAL);
+    if (n > 0){
+        if(d->parser.type == 0x02){
+            ret = DONE;
+        }
+        else{
+            buffer_read_adv(buff,n);
+            if(!buffer_can_read(buff)){
+                if(selector_set_interest_key(key,OP_READ) == SELECTOR_SUCCESS){
+                    ret = CMD_READ;
+                }
+                else{
+                    ret = ERROR;
+                }
+            }
+        }
+    }
+    else{
+        ret = ERROR;
+    }
+    return ret;
+}
