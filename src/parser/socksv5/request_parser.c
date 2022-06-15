@@ -231,62 +231,62 @@ char * request_parser_error_report(request_state state){
     }
         
 }
-void request_parser_close(struct request_parser *p) {
-    //TODO: MANEJAR ESTO 
-}
 
-extern int request_marshall(buffer *b, const enum socks5_response_status status, const enum socks5_addr_type atyp, const union socks5_addr addr,const in_port_t port ) {
+int request_marshall(buffer *b, const enum socks5_response_status status, const enum socks5_addr_type atyp, const union socks5_addr addr,const in_port_t port ) {
     size_t n;
     uint8_t *buff=buffer_write_ptr(b,&n);
-    if(n<10) {
-        return -1;
-    }
-    int len=6;
+    size_t len=6;
     int addr_size=0;
     uint8_t *aux=NULL;
 
+    fprintf(stderr, "llegue al marshall");
     /* vamos switcheando entre los diferentes tipos, y en base al tipo de address
     sabemos que hay que ponerle a los lugares restantes de buff*/
     switch (atyp)
     {
-    case SOCKS5_REQ_ADDRTYPE_IPV4:
-        addr_size=4;
-        len+=addr_size;
-        aux=(uint8_t *)malloc(addr_size*sizeof(uint8_t));
-        memcpy(aux,&addr.ipv4.sin_addr,addr_size);
-        break;
-    
-    case SOCKS5_REQ_ADDRTYPE_IPV6:
-        addr_size=16;
-        len+=addr_size;
-        aux=(uint8_t *)malloc(addr_size*sizeof(uint8_t));
-        memcpy(aux,&addr.ipv6.sin6_addr,addr_size);
-    break;
-    case SOCKS5_REQ_ADDRTYPE_DOMAIN:
-        addr_size=strlen(addr.fqdn);
-        aux=(uint8_t *)malloc((addr_size+1)*sizeof(uint8_t));
-        aux[0]=addr_size;
-        memcpy(aux+1,addr.fqdn,addr_size);
-        addr_size++;
+        case SOCKS5_REQ_ADDRTYPE_IPV4:
+            addr_size=4;
+            len+=addr_size;
+            aux=(uint8_t *)malloc(addr_size*sizeof(uint8_t));
+            memcpy(aux,&addr.ipv4.sin_addr,addr_size);
+            break;
+        
+        case SOCKS5_REQ_ADDRTYPE_IPV6:
+            addr_size=16;
+            len+=addr_size;
+            aux=(uint8_t *)malloc(addr_size*sizeof(uint8_t));
+            memcpy(aux,&addr.ipv6.sin6_addr,addr_size);
+            break;
 
+        case SOCKS5_REQ_ADDRTYPE_DOMAIN:
+            addr_size=strlen(addr.fqdn);
+            aux=(uint8_t *)malloc((addr_size+1)*sizeof(uint8_t));
+            aux[0]=addr_size;
+            memcpy(aux+1,addr.fqdn,addr_size);
+            addr_size++;
+            len+=addr_size;
+            break;
+        default:
+            log_print(LOG_ERROR,"invalid address type in request marshall");
+            return -1;
+            break;
+    }
 
-        len+=addr_size;
-    break;
-    default:
-        log_print(LOG_ERROR,"Invalid address type in request marshall");
+    if (n < len)
+    {
+        free(aux);
         return -1;
-        break;
     }
 
     buff[0] = SOCKS5_VERSION;
     buff[1] = status;
     buff[2] = 0x00;
-    buff[3] = SOCKS5_REQ_ADDRTYPE_IPV4;
+    buff[3] = atyp;
     memcpy(&buff[4],aux,addr_size);
     memcpy(&buff[4+addr_size],&port,2);
     free(aux);
-    buffer_write_adv(b,10);
-    return 10;
+    buffer_write_adv(b,len);
+    return len;
 }
 
 enum socks5_response_status errno_to_socks(int e) {

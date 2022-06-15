@@ -18,7 +18,6 @@ typedef struct user_info {
     char * password;
 } user_info;
 
-
 struct socks5args {
     char           *socks_addr;
     unsigned short  socks_port;
@@ -31,7 +30,8 @@ struct socks5args {
     int             nusers;
     char *          version;
     struct user_info users[MAX_USERS];
-    struct socks5Stats stats;
+    bool spoofing;
+    bool authentication;
 };
 
 
