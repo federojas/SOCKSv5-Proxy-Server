@@ -4,25 +4,26 @@
 #include <string.h>
 
 struct socks5_stats socks5_stats;
+static void inc_historic_connections(void);
 
 void stats_init(struct socks5_stats * socks5_stats){
     memset(socks5_stats, 0,sizeof(*socks5_stats));
 }
 
-void inc_current_connection(void){
+void inc_current_connections(void){
     if(socks5_stats.current_connections<UINT16_MAX){
         socks5_stats.current_connections++;
         inc_historic_connections();
     }
 }
 
-void dec_current_connection(void){
-    if(socks5_stats.current_connections >0){
+void dec_current_connections(void){
+    if(socks5_stats.current_connections > 0){
         socks5_stats.current_connections--;
     }
 }
 
-void inc_historic_connections(void){
+static void inc_historic_connections(void){
     if(socks5_stats.historic_connections < UINT64_MAX ){
         socks5_stats.historic_connections++;
     }

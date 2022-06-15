@@ -376,6 +376,7 @@ socksv5_done(struct selector_key* key) {
         ATTACHMENT(key)->client_fd,
         ATTACHMENT(key)->origin_fd,
     };
+    
     for(unsigned i = 0; i < N(fds); i++) {
         if(fds[i] != -1) {
             if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, fds[i])) {
@@ -384,6 +385,10 @@ socksv5_done(struct selector_key* key) {
             close(fds[i]);
         }
     }
+
+    // Cuando el estado sea DONE o ERROR siempre cae aca
+    // Elimino una conexion concurrente
+    dec_current_connections();
 }
 
 /** Intenta aceptar la nueva conexiÃ³n entrante*/
@@ -407,6 +412,10 @@ socksv5_passive_accept(struct selector_key *key) {
         error_message = "Socks5 Passive: set non block failed";
         goto fail;
     }
+
+    // Incremento la cantidad de conexiones concurrentes
+    // y agrego una a las conexiones historicas 
+    inc_current_connections();
 
     state = socks5_new(client);
 
@@ -479,6 +488,7 @@ hello_read(struct selector_key *key) {
     n = recv(key->fd, ptr, count, 0);
     if(n > 0) {
         buffer_write_adv(d->rb, n);
+        add_bytes_sent(n);
         if(hello_parser_consume(d->rb, &d->parser, &error)) {
             if(SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
                 ret = hello_process(d);
@@ -489,6 +499,7 @@ hello_read(struct selector_key *key) {
     } else {
         ret = ERROR;
     }
+
     return error ? ERROR : ret;
 }
 
@@ -534,6 +545,8 @@ hello_write(struct selector_key *key)
     else
     {
         buffer_read_adv(d->wb, n);
+        add_bytes_sent(n);
+
         if (!buffer_can_read(d->wb))
         {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_READ))
@@ -654,7 +667,7 @@ request_resolv_blocking(void * data) {
     pthread_detach(pthread_self());
     s->origin_resolution = 0;
 
-    struct  addrinfo hints = {
+    struct addrinfo hints = {
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_STREAM,
         .ai_flags = AI_PASSIVE,
@@ -798,6 +811,8 @@ request_read (struct selector_key *key) {
     n = recv(key->fd, ptr, count, 0);
     if (n > 0) {
         buffer_write_adv(b, n);
+        add_bytes_sent(n);
+
         if (request_parser_consume(b, &d->parser, &error)) {
             ret = request_process(key, d);
         }
@@ -933,6 +948,8 @@ static unsigned request_write(struct selector_key *key)
     ssize_t n;
     ptr = buffer_read_ptr(b, &count);
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
+    add_bytes_sent(n);
+
     if (n == -1)
     {
         ret = ERROR;
@@ -1006,6 +1023,7 @@ static unsigned copy_read(struct selector_key *key)
     else
     {
         buffer_write_adv(b, n);
+
     }
 
     copy_compute_interests(key->s, d);
@@ -1051,6 +1069,8 @@ static unsigned copy_write(struct selector_key *key)
     {
         ret = DONE;
     }
+
+    fprintf(stderr, "Bytes transferred: %ld\n", (long) socks5_stats.bytes_transfered);
 
     return ret;
 }
