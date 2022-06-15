@@ -16,7 +16,7 @@ struct socks5_stats {
 void stats_init(struct socks5_stats * socks5_stats);
 void inc_current_connections(void);
 void dec_current_connections(void);
-void add_bytes_sent(uint64_t bytes);
+void add_bytes_transferred(uint64_t bytes);
 void inc_usr_amount(void);
 
 #endif

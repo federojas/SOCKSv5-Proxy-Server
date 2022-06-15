@@ -29,8 +29,7 @@ static void inc_historic_connections(void){
     }
 }
 
-void add_bytes_sent(uint64_t bytes){
-    fprintf(stderr,"pase por bytes sent");
+void add_bytes_transferred(uint64_t bytes){
     if(bytes + socks5_stats.bytes_transfered < UINT64_MAX){
         socks5_stats.bytes_transfered+=bytes;
     }
