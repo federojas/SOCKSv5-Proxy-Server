@@ -1,5 +1,5 @@
-#ifndef DOG_NIO_H
-#define DOG_NIO_H
+#ifndef DOG_MANAGER_H
+#define DOG_MANAGER_H
 
 #include "selector.h"
 

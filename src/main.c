@@ -23,11 +23,17 @@
 #define MAX_ADDR_BUFFER 128
 #define SELECTOR_SIZE 1024
 
+#define DEFAULT_SOCKS5_IPV4 "0.0.0.0"
+#define DEFAULT_SOCKS5_IPV6 "0::0"
+#define DEFAULT_MANAGER_IPV4 "127.0.0.1"
+#define DEFAULT_MANAGER_IPV6 "::1"
+
+
 static bool done = false;
 extern struct socks5args socks5args;
 extern struct socks5_stats socks5_stats;
 
-static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket);
+static int build_passive_socket(addr_type addr_type, bool udp_socket);
 
     // TODO: Clean up function
 static void
@@ -52,7 +58,7 @@ int main(const int argc, char **argv) {
     fd_selector selector      = NULL;
 
     //Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
-    current_sock_fd = build_TCP_passive_socket(ADDR_IPV4, false);
+    current_sock_fd = build_passive_socket(ADDR_IPV4, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -62,7 +68,7 @@ int main(const int argc, char **argv) {
     } else {
         proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
-    current_sock_fd = build_TCP_passive_socket(ADDR_IPV6, false);
+    current_sock_fd = build_passive_socket(ADDR_IPV6, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -81,7 +87,7 @@ int main(const int argc, char **argv) {
 
     //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
     /*
-    current_sock_fd = build_TCP_passive_socket(ADDR_IPV4, true);
+    current_sock_fd = build_passive_socket(ADDR_IPV4, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -91,7 +97,7 @@ int main(const int argc, char **argv) {
     } else {
         server_manager[server_manager_size++] = current_sock_fd;
     }
-    current_sock_fd = build_TCP_passive_socket(ADDR_IPV6, true);
+    current_sock_fd = build_passive_socket(ADDR_IPV6, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -203,8 +209,7 @@ finally:
     return ret;
 }
 
-
-static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
+static int build_passive_socket(addr_type addr_type, bool udp_socket) {
 
     int new_socket;
 
@@ -212,22 +217,22 @@ static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
     struct sockaddr_in6 addr_6;
 
     int network_flag = (addr_type == ADDR_IPV4) ? AF_INET : AF_INET6;
-    int socket_type = SOCK_STREAM; //TCP socket
-    int protocol = IPPROTO_TCP; //TCP socket
+    int socket_type = udp_socket ? SOCK_DGRAM : SOCK_STREAM;
+    int protocol = udp_socket ? IPPROTO_UDP : IPPROTO_TCP;
 
-    int port = manager_socket ? socks5args.mng_port : socks5args.socks_port;
-    char * string_addr = manager_socket ? socks5args.mng_addr : socks5args.socks_addr;
+    int port = udp_socket ? socks5args.mng_port : socks5args.socks_port;
+    char * string_addr = udp_socket ? socks5args.mng_addr : socks5args.socks_addr;
 
     // Default config, escuchar en server SOCKSv5 proxy y en server manager
 
-    if (strcmp(string_addr,"0.0.0.0") == 0 && addr_type == ADDR_IPV6 && !manager_socket
+    if (strcmp(string_addr, DEFAULT_SOCKS5_IPV4) == 0 && addr_type == ADDR_IPV6 && !udp_socket
             && socks5args.socks_on_both ) {
-        string_addr = "0::0";
+        string_addr = DEFAULT_SOCKS5_IPV6;
     }
 
-    if (strcmp(string_addr,"127.0.0.1") == 0 && addr_type == ADDR_IPV6 && manager_socket
+    if (strcmp(string_addr, DEFAULT_MANAGER_IPV4) == 0 && addr_type == ADDR_IPV6 && udp_socket
             && socks5args.mng_on_both ) {
-        string_addr = "::1";
+        string_addr = DEFAULT_MANAGER_IPV6;
     }
 
     new_socket = socket(network_flag, socket_type, protocol);
@@ -236,13 +241,11 @@ static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
         return -1;
     }
 
-    // man 7 ip. no importa reportar nada si falla, solo reporto el error
     if(setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
 
     // Sockets ipv6 no acepta ipv4 
-    // man 7 ip. no importa reportar nada si falla, solo reporto el error
     if (addr_type == ADDR_IPV6 && setsockopt(new_socket, IPPROTO_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof(int)) < 0) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
@@ -279,13 +282,13 @@ static int build_TCP_passive_socket(addr_type addr_type, bool manager_socket) {
         }
     }
 
-    if (!manager_socket && listen(new_socket, MAX_PENDING_CONN) < 0) {
+    if (!udp_socket && listen(new_socket, MAX_PENDING_CONN) < 0) {
         log_print(LOG_ERROR, "Unable to listen socket");
         close(new_socket);
         return -1;
     }
     else {
-        log_print(INFO, "Waiting for new %s %s connection on socket with fd: %d", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", manager_socket ? "SOCKSv5":"manager", new_socket);
+        log_print(INFO, "\nWaiting for new %s %s connection on %s socket with fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "SOCKSv5":"manager", udp_socket ? "TCP":"UDP", new_socket);
     }
 
     return new_socket;
