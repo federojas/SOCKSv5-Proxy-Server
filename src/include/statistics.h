@@ -6,8 +6,8 @@
 #include <stdbool.h>
 
 struct socks5_stats {
-    uint64_t bytes_transfered;
-    uint64_t historic_connections;
+    uint32_t bytes_transfered;
+    uint32_t historic_connections;
     uint16_t current_connections;
     int usr_amount;
 };
@@ -15,7 +15,7 @@ struct socks5_stats {
 void stats_init(struct socks5_stats * socks5_stats);
 void inc_current_connections(void);
 void dec_current_connections(void);
-void add_bytes_transferred(uint64_t bytes);
+void add_bytes_transferred(uint32_t bytes);
 void inc_usr_amount(void);
 
 #endif

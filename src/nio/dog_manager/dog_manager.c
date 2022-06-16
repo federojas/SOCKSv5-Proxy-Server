@@ -205,7 +205,7 @@ void get_cmd_list_handler(dog_response * dog_response, dog_request dog_request) 
 }
 
 void get_cmd_hist_conn_handler(dog_response * dog_response, dog_request dog_request) {
-    dog_response->current_dog_data.dog_uint64 = socks5_stats.historic_connections;
+    dog_response->current_dog_data.dog_uint32 = socks5_stats.historic_connections;
 }
 
 void get_cmd_conc_conn_handler(dog_response * dog_response, dog_request dog_request) {
@@ -213,7 +213,7 @@ void get_cmd_conc_conn_handler(dog_response * dog_response, dog_request dog_requ
 }
 
 void get_cmd_bytes_transf_handler(dog_response * dog_response, dog_request dog_request) {
-    dog_response->current_dog_data.dog_uint64 = socks5_stats.bytes_transfered;
+    dog_response->current_dog_data.dog_uint32 = socks5_stats.bytes_transfered;
 }
 
 void get_cmd_is_sniffing_handler(dog_response * dog_response, dog_request dog_request) {

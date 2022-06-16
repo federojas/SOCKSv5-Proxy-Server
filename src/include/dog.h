@@ -8,7 +8,7 @@
 
 // in bytes
 #define MAX_UDP_SIZE 65507
-#define DOG_REQUEST_HEADER_SIZE 14
+#define DOG_REQUEST_HEADER_SIZE 10
 #define DOG_RESPONSE_HEADER_SIZE 6
 #define DOG_REQUEST_ID_SIZE 2
 #define ERROR -1
@@ -67,14 +67,14 @@ typedef enum dog_data_type {
     NO_DATA,
     UINT_8_DATA,
     UINT_16_DATA,
-    UINT_64_DATA,
+    UINT_32_DATA,
     STRING_DATA
 } dog_data_type;
 
 typedef union current_dog_data {
     uint8_t dog_uint8;
     uint16_t dog_uint16;
-    uint64_t dog_uint64;
+    uint32_t dog_uint32;
     char string[MAX_UDP_SIZE - DOG_REQUEST_HEADER_SIZE];
 } current_dog_data;
 
@@ -82,7 +82,7 @@ typedef union current_dog_data {
  +------+-------+-----+-----+---------+
  | VER  | TYPE  | CMD |  ID |  TOKEN  |
  +------+-------+-----+-----+---------+
- |  1   |  1    |  2  |  2  |   8     |  
+ |  1   |  1    |  2  |  2  |    4    |  
  +------+-------+-----+-----+---------+
 */
 
@@ -91,7 +91,7 @@ typedef struct dog_request {
     dog_type dog_type;
     unsigned current_dog_cmd;
     uint16_t req_id;
-    uint64_t token;
+    uint32_t token;
     current_dog_data current_dog_data;
 } dog_request;
 
