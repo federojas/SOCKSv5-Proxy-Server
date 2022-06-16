@@ -1,7 +1,7 @@
 /**
  * socks5nio.c  - controla el flujo de un proxy SOCKSv5 (sockets no bloqueantes)
  */
-#include<stdio.h>
+#include <stdio.h>
 #include <stdlib.h>  // malloc
 #include <string.h>  // memset
 #include <assert.h>  // assert
@@ -23,13 +23,13 @@
 #include "logger.h"
 #include "pop3_sniffer.h"
 
-extern struct socks5args socks5args;
+extern struct socks5_args socks5_args;
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
 static struct socks5 * pool = 0;
-extern struct socks5args socks5args;
+extern struct socks5_args socks5_args;
 extern struct socks5_stats socks5_stats;
 
 // TODO: REVISAR SIEMPRE EL RESULTADO DE SELECTOR_SET_INTEREST
@@ -213,7 +213,6 @@ struct socks5 {
 
     /** buffers **/
     //TODOS NUMEROS DIDACTICOS, HAY QUE LLEGAR A NUESTRO TAMAÑO DE BUFFER IDEAL Y JUSTIFICAR (CODA)
-    //PARA QUE SON ESTOS RAW BUFF ?????????????
     uint8_t raw_buff_a[BUFFER_SIZE], raw_buff_b[BUFFER_SIZE];
     buffer read_buffer, write_buffer;
 
@@ -456,7 +455,7 @@ fail:
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t *selected  = p->data;
-    if(socks5args.authentication == 1) {
+    if(socks5_args.authentication == 1) {
         if(method == METHOD_AUTH_REQ) 
             *selected = method;
     } else {
@@ -964,7 +963,6 @@ static unsigned request_write(struct selector_key *key)
 
 ////////////////////////////////////////
 ////////////// COPY ///////////////////
-// TODO: aca deberiamos sacar todas las estadisticas y sniffear las contraseñas
 
 static struct copy *fd_copy(struct selector_key *key)
 {
@@ -1028,7 +1026,7 @@ static unsigned copy_read(struct selector_key *key) {
         }
     }
     else {
-        if(socks5args.spoofing) {
+        if(socks5_args.spoofing) {
             //TODO chequear key???
             pop3_sniffer(key, ptr, n);
         }
@@ -1065,7 +1063,7 @@ static unsigned copy_write(struct selector_key *key) {
     } else {
         add_bytes_transferred(n);
         //TODO chequear key???
-        if(socks5args.spoofing){
+        if(socks5_args.spoofing){
             pop3_sniffer(key,ptr,n);
         }
         buffer_read_adv(b, n);

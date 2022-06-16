@@ -14,6 +14,8 @@
 #define ERROR -1
 #define SUCCESS 0
 
+
+
 typedef enum dog_packet_type {
     DOG_REQUEST,
     DOG_RESPONSE
@@ -24,6 +26,8 @@ typedef enum dog_type {
     TYPE_ALTER,
 } dog_type;
 
+#define GET_CMD_QTY 6
+
 typedef enum dog_get_cmd {
     GET_CMD_LIST,
     GET_CMD_HIST_CONN,
@@ -32,6 +36,8 @@ typedef enum dog_get_cmd {
     GET_CMD_IS_SNIFFING_ENABLED,
     GET_CMD_IS_AUTH_ENABLED
 } dog_get_cmd;
+
+#define ALTER_CMD_QTY 4
 
 typedef enum dog_alter_cmd {
     ALTER_CMD_ADD_USER,
@@ -46,9 +52,15 @@ typedef enum dog_version {
 
 typedef enum dog_status_code {
     SC_OK,
-    SC_AUTH_FAILED,
     SC_INVALID_VERSION,
-    SC_INTERNAL_SERVER_ERROR
+    SC_BAD_CREDENTIALS,
+    SC_INVALID_TYPE,
+    SC_INVALID_COMMAND,
+    SC_INVALID_ARGUMENT,
+    SC_SERVER_IS_FULL,
+    SC_INVALID_USER_IS_REGISTERED,
+    SC_USER_NOT_FOUND,
+    SC_INTERNAL_SERVER_ERROR,
 } dog_status_code;
 
 typedef enum dog_data_type {
@@ -66,7 +78,7 @@ typedef union current_dog_data {
     char string[MAX_UDP_SIZE - DOG_REQUEST_HEADER_SIZE];
 } current_dog_data;
 
-/*          DOG REQUEST
+/*          DOG REQUEST HEADER
  +------+-------+-----+-----+---------+
  | VER  | TYPE  | CMD |  ID |  TOKEN  |
  +------+-------+-----+-----+---------+
@@ -83,7 +95,7 @@ typedef struct dog_request {
     current_dog_data current_dog_data;
 } dog_request;
 
-/*          DOG RESPONSE
+/*          DOG RESPONSE HEADER
  +------+--------+------+-----+-----+
  | VER  | STATUS | TYPE | CMD |  ID |
  +------+--------+------+-----+-----+
@@ -100,9 +112,9 @@ typedef struct dog_response {
 } dog_response;
 
 
-dog_data_type op_to_req_data_type(unsigned dog_type, unsigned dog_cmd);
+dog_data_type cmd_to_req_data_type(unsigned dog_type, unsigned dog_cmd);
 
-dog_data_type op_to_resp_data_type(unsigned dog_type, unsigned dog_cmd);
+dog_data_type cmd_to_resp_data_type(unsigned dog_type, unsigned dog_cmd);
 
 /* parser method */
 int raw_packet_to_dog_request(char * raw, dog_request* request);

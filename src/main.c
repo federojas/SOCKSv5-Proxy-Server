@@ -30,7 +30,7 @@
 
 
 static bool done = false;
-extern struct socks5args socks5args;
+extern struct socks5_args socks5_args;
 extern struct socks5_stats socks5_stats;
 
 static int build_passive_socket(addr_type addr_type, bool udp_socket);
@@ -51,7 +51,7 @@ int main(const int argc, char **argv) {
     int current_sock_fd = -1;
     int proxy_socks5[2], proxy_socks5_size =0;
     //int server_manager[2], server_manager_size = 0;
-    parse_args(argc, argv, &socks5args);
+    parse_args(argc, argv, &socks5_args);
     stats_init(&socks5_stats);
     
     selector_status   ss      = SELECTOR_SUCCESS;
@@ -220,18 +220,18 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
     int socket_type = udp_socket ? SOCK_DGRAM : SOCK_STREAM;
     int protocol = udp_socket ? IPPROTO_UDP : IPPROTO_TCP;
 
-    int port = udp_socket ? socks5args.mng_port : socks5args.socks_port;
-    char * string_addr = udp_socket ? socks5args.mng_addr : socks5args.socks_addr;
+    int port = udp_socket ? socks5_args.mng_port : socks5_args.socks_port;
+    char * string_addr = udp_socket ? socks5_args.mng_addr : socks5_args.socks_addr;
 
     // Default config, escuchar en server SOCKSv5 proxy y en server manager
 
     if (strcmp(string_addr, DEFAULT_SOCKS5_IPV4) == 0 && addr_type == ADDR_IPV6 && !udp_socket
-            && socks5args.socks_on_both ) {
+            && socks5_args.socks_on_both ) {
         string_addr = DEFAULT_SOCKS5_IPV6;
     }
 
     if (strcmp(string_addr, DEFAULT_MANAGER_IPV4) == 0 && addr_type == ADDR_IPV6 && udp_socket
-            && socks5args.mng_on_both ) {
+            && socks5_args.mng_on_both ) {
         string_addr = DEFAULT_MANAGER_IPV6;
     }
 
@@ -241,7 +241,7 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         return -1;
     }
 
-    if(setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
+    if(!udp_socket && setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
 

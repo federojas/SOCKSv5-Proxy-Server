@@ -7,7 +7,7 @@
 
 #include "args.h"
 
-struct socks5args socks5args;
+struct socks5_args socks5_args;
 
 static unsigned short
 port(const char *s) {
@@ -24,27 +24,21 @@ port(const char *s) {
      return (unsigned short)sl;
 }
 
-static void
-user(char *s, struct user_info *user) {
-    int absent = 0;
-    char *p = strchr(s, ':');
+static
+void user(char *s, struct user_info *user) {
+    char *p = strchr(s, USER_PASS_DELIMETER);
     if(p == NULL) {
         fprintf(stderr, "Password not found\n");
         exit(1);
     } else {
         *p = 0;
         p++;
-        if(strlen(s) > 255 || strlen(p) > 255){
+        if(strlen(s) > MAX_CRED_SIZE || strlen(p) > MAX_CRED_SIZE) {
             fprintf(stderr, "Username or password specified too long, maximum length is 255 characters\n");
             exit(1);
         }
-        //Buscar en users
-
         user->username = s;
         user->password = p;
-        if(absent) {
-            //Buscar en admin
-        }
     }
 }
 
@@ -74,9 +68,9 @@ usage(const char *progname) {
 }
 
 void 
-parse_args(const int argc, char **argv, struct socks5args *args) {
+parse_args(const int argc, char **argv, struct socks5_args *args) {
 
-    memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
+    memset(args, 0, sizeof(*args));
     
     args->version = DEFAULT_VERSION_NUMBER;
     args->nusers = 0;
@@ -124,10 +118,8 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
             case 'u':
                 if(args->nusers >= MAX_USERS) {
                     fprintf(stderr, "\n\nMaximun number of command line users reached: %d.\n", MAX_USERS);
-                    //free_args(); TODO FREE USUSARIOS Y ADMINS Y EL ARGS
                     exit(1);
                 } else {
-                    //COMO MANEJAMOS ADMINS??????
                     user(optarg, args->users + args->nusers);
                     args->nusers++;
                     args->authentication = true;
@@ -155,8 +147,8 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
 
 
 bool user_registerd(char * user, char * pass) {
-    for(int i = 0; i < socks5args.nusers; i++ ) {
-        if(strcmp(user, socks5args.users[i].username) == 0 && strcmp(pass, socks5args.users[i].password) == 0)
+    for(int i = 0; i < socks5_args.nusers; i++ ) {
+        if(strcmp(user, socks5_args.users[i].username) == 0 && strcmp(pass, socks5_args.users[i].password) == 0)
             return true;
     }
     return false;

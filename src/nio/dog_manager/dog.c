@@ -34,7 +34,7 @@ int raw_packet_to_dog_request(char * raw, dog_request* request) {
     request->token = ntohs(*((uint64_t *) raw));
     raw += sizeof(uint16_t);
 
-    read_dog_data(&request->current_dog_data , op_to_req_data_type(request->dog_type, request->current_dog_cmd), raw);
+    read_dog_data(&request->current_dog_data , cmd_to_req_data_type(request->dog_type, request->current_dog_cmd), raw);
 
     return 0;
 }
@@ -66,7 +66,7 @@ int raw_packet_to_dog_response(char * raw, dog_response* response) {
     raw += sizeof(uint16_t);
 
     if (response->dog_status_code == SC_OK)
-        read_dog_data(&response->current_dog_data, op_to_resp_data_type(response->dog_type, response->current_dog_cmd), raw);
+        read_dog_data(&response->current_dog_data, cmd_to_resp_data_type(response->dog_type, response->current_dog_cmd), raw);
 
     return 0;
 
@@ -103,7 +103,7 @@ int dog_request_to_packet(char* output, dog_request * input, int* size) {
     memcpy(buffer_p,&aux,sizeof(uint64_t));
     buffer_p += sizeof(uint64_t);
 
-    dog_data_to_buffer(input->current_dog_data, op_to_req_data_type(input->dog_type,
+    dog_data_to_buffer(input->current_dog_data, cmd_to_req_data_type(input->dog_type,
                        input->current_dog_cmd), buffer_p);
 
     return 0;
@@ -137,7 +137,7 @@ int dog_response_to_packet(char* output, dog_response * input, int* size) {
     buffer_p += sizeof(uint16_t);
 
     if (input->dog_status_code == SC_OK)
-        dog_data_to_buffer(input->current_dog_data, op_to_resp_data_type(input->dog_type, 
+        dog_data_to_buffer(input->current_dog_data, cmd_to_resp_data_type(input->dog_type, 
                            input->current_dog_cmd), buffer_p);
 
     return 0;
@@ -187,12 +187,13 @@ static void dog_data_to_buffer(current_dog_data input, dog_data_type dog_data_ty
     }
 }
 
+// TODO: Completar
 char* error_report(dog_status_code status_code) {
     switch (status_code) {
         case SC_OK:
             return "OK";
             break;
-        case SC_AUTH_FAILED:
+        case SC_BAD_CREDENTIALS:
             return "Authentication failed";
             break;
         case SC_INVALID_VERSION:
@@ -206,8 +207,7 @@ char* error_report(dog_status_code status_code) {
     }
 }
 
- // TODO: PENSARLO Y COMPLETARLO
-dog_data_type op_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
+dog_data_type cmd_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
     switch (dog_type) {
         case TYPE_GET:
             switch(dog_cmd) {
@@ -224,8 +224,10 @@ dog_data_type op_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
             switch(dog_cmd) {
                 case ALTER_CMD_ADD_USER:
                 case ALTER_CMD_DEL_USER:
+                    return STRING_DATA;
                 case ALTER_CMD_TOGGLE_SNIFFING:
                 case ALTER_CMD_TOGGLE_AUTH:
+                    return UINT_8_DATA;
                 default:
                     return NO_DATA;
             }
@@ -234,17 +236,20 @@ dog_data_type op_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
     }
 }
 
-// TODO: PENSAR Y COMPLETAR
-dog_data_type op_to_resp_data_type(unsigned dog_type, unsigned dog_cmd){
+dog_data_type cmd_to_resp_data_type(unsigned dog_type, unsigned dog_cmd){
     switch (dog_type) {
         case TYPE_GET:
             switch(dog_cmd) {
                 case GET_CMD_LIST:
+                    return STRING_DATA;
                 case GET_CMD_HIST_CONN:
-                case GET_CMD_CONC_CONN:
                 case GET_CMD_BYTES_TRANSF:
+                    return UINT_64_DATA;
+                case GET_CMD_CONC_CONN:
+                    return UINT_16_DATA;
                 case GET_CMD_IS_SNIFFING_ENABLED:
                 case GET_CMD_IS_AUTH_ENABLED:
+                    return UINT_8_DATA;
                 default:
                     return NO_DATA;
             }
@@ -267,11 +272,11 @@ static int get_packet_size(dog_packet_type dog_packet_type, unsigned dog_type, u
     dog_data_type dog_data_type;
     if (dog_packet_type == DOG_REQUEST){
         size += DOG_REQUEST_HEADER_SIZE;
-        dog_data_type = op_to_req_data_type(dog_type, dog_cmd);
+        dog_data_type = cmd_to_req_data_type(dog_type, dog_cmd);
     }
     else {
         size += DOG_RESPONSE_HEADER_SIZE;
-        dog_data_type = op_to_resp_data_type(dog_type, dog_cmd);
+        dog_data_type = cmd_to_resp_data_type(dog_type, dog_cmd);
     }
 
     switch (dog_data_type) {

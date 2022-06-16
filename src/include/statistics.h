@@ -6,7 +6,6 @@
 #include <stdbool.h>
 
 struct socks5_stats {
-    // TODO: Hay que contemplar los bytes del ida y de vuelta?
     uint64_t bytes_transfered;
     uint64_t historic_connections;
     uint16_t current_connections;
