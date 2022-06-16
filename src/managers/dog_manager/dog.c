@@ -187,21 +187,28 @@ static void dog_data_to_buffer(current_dog_data input, dog_data_type dog_data_ty
     }
 }
 
-// TODO: Completar
 char* error_report(dog_status_code status_code) {
     switch (status_code) {
         case SC_OK:
             return "OK";
-            break;
-        case SC_BAD_CREDENTIALS:
-            return "Authentication failed";
-            break;
         case SC_INVALID_VERSION:
             return "Invalid Dog version";
-            break;
+        case SC_BAD_CREDENTIALS:
+            return "Authentication failed";
+        case SC_INVALID_TYPE:
+            return "Invalid request type";
+        case SC_INVALID_COMMAND:
+            return "Invalid command";
+        case SC_INVALID_ARGUMENT:
+            return "Invalid command argument";
+        case SC_SERVER_IS_FULL:
+            return "Could not add new user, server is full";
+        case SC_INVALID_USER_IS_REGISTERED:
+            return "Could not add new user, already registerd";
+        case SC_USER_NOT_FOUND:
+            return "Could not delete specified user, not found";
         case SC_INTERNAL_SERVER_ERROR:
-            return "Internal Server Error";
-            break;
+            return "Internal server error";
         default:
             return "Unknown error";
     }
@@ -227,6 +234,7 @@ dog_data_type cmd_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
                     return STRING_DATA;
                 case ALTER_CMD_TOGGLE_SNIFFING:
                 case ALTER_CMD_TOGGLE_AUTH:
+                case ALTER_CMD_USER_PAGE_SIZE:
                     return UINT_8_DATA;
                 default:
                     return NO_DATA;
@@ -249,6 +257,7 @@ dog_data_type cmd_to_resp_data_type(unsigned dog_type, unsigned dog_cmd){
                     return UINT_16_DATA;
                 case GET_CMD_IS_SNIFFING_ENABLED:
                 case GET_CMD_IS_AUTH_ENABLED:
+                case GET_CMD_USER_PAGE_SIZE:
                     return UINT_8_DATA;
                 default:
                     return NO_DATA;

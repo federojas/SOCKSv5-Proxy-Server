@@ -34,7 +34,8 @@ typedef enum dog_get_cmd {
     GET_CMD_CONC_CONN,
     GET_CMD_BYTES_TRANSF,
     GET_CMD_IS_SNIFFING_ENABLED,
-    GET_CMD_IS_AUTH_ENABLED
+    GET_CMD_IS_AUTH_ENABLED,
+    GET_CMD_USER_PAGE_SIZE
 } dog_get_cmd;
 
 #define ALTER_CMD_QTY 4
@@ -43,7 +44,8 @@ typedef enum dog_alter_cmd {
     ALTER_CMD_ADD_USER,
     ALTER_CMD_DEL_USER,
     ALTER_CMD_TOGGLE_SNIFFING,
-    ALTER_CMD_TOGGLE_AUTH
+    ALTER_CMD_TOGGLE_AUTH,
+    ALTER_CMD_USER_PAGE_SIZE
 } dog_alter_cmd;
 
 typedef enum dog_version {

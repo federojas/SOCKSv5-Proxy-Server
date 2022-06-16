@@ -43,6 +43,4 @@ struct socks5_args {
  */
 void parse_args(const int argc, char **argv, struct socks5_args *args);
 
-bool user_registerd(char * user, char * pass);
-
 #endif

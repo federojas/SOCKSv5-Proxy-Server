@@ -22,6 +22,7 @@
 #include "stm.h"
 #include "logger.h"
 #include "pop3_sniffer.h"
+#include "user_utils.h"
 
 extern struct socks5_args socks5_args;
 

@@ -6,6 +6,7 @@
 #include <getopt.h>
 
 #include "args.h"
+#include "user_utils.h"
 
 struct socks5_args socks5_args;
 
@@ -33,6 +34,10 @@ void user(char *s, struct user_info *user) {
     } else {
         *p = 0;
         p++;
+        if(user_registerd(s, p)) {
+            fprintf(stderr, "Duplicate user specified\n");
+            exit(1);
+        }
         if(strlen(s) > MAX_CRED_SIZE || strlen(p) > MAX_CRED_SIZE) {
             fprintf(stderr, "Username or password specified too long, maximum length is 255 characters\n");
             exit(1);
@@ -146,10 +151,4 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
 }
 
 
-bool user_registerd(char * user, char * pass) {
-    for(int i = 0; i < socks5_args.nusers; i++ ) {
-        if(strcmp(user, socks5_args.users[i].username) == 0 && strcmp(pass, socks5_args.users[i].password) == 0)
-            return true;
-    }
-    return false;
-}
+
