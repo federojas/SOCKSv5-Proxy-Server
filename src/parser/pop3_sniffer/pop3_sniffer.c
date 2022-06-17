@@ -147,16 +147,17 @@ bool pop3_sniffer_parser_is_done(struct pop3_sniffer_parser *p) {
     return p->current_state == POP3_SUCCESS;
 }
 
-enum pop3_sniffer_state pop3_sniffer_parser_consume(struct pop3_sniffer_parser *p) {
+enum pop3_sniffer_state pop3_sniffer_parser_consume(struct pop3_sniffer_parser *p, struct log_data * log_data) {
     while(buffer_can_read(&p->buffer) && !pop3_sniffer_parser_is_done(p)) {
         uint8_t byte = buffer_read(&p->buffer);
         p->current_state = pop3_sniffer_parser_feed(p, byte);
     }
 
     if(p->current_state == POP3_SUCCESS) {
-        log_print(INFO, "Sniffed POP3 credentials\n");
-        log_print(INFO, "Username: %s \n", p->username);
-        log_print(INFO, "Password: %s \n", p->password);
+        log_data->sniffed_user_info.username = p->username;
+        log_data->sniffed_user_info.password = p->password;
+        pop3_sniffer_print(log_data);
     }
+
     return p->current_state;
 }

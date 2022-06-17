@@ -23,7 +23,6 @@ typedef enum pop3_sniffer_state {
 
 
 typedef struct pop3_sniffer_parser {
-
     pop3_sniffer_state current_state;
     bool is_initiated;
     buffer buffer;
@@ -40,6 +39,6 @@ enum pop3_sniffer_state pop3_sniffer_parser_feed(pop3_sniffer_parser *p, const u
 
 bool pop3_sniffer_parser_is_done(struct pop3_sniffer_parser *p);
 
-enum pop3_sniffer_state pop3_sniffer_parser_consume(struct pop3_sniffer_parser *p);
+enum pop3_sniffer_state pop3_sniffer_parser_consume(struct pop3_sniffer_parser *p, struct log_data * log_data);
 
 #endif

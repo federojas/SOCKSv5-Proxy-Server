@@ -26,13 +26,13 @@ void dec_current_connections(void){
 }
 
 static void inc_historic_connections(void){
-    if(socks5_stats.historic_connections < UINT64_MAX ){
+    if(socks5_stats.historic_connections < UINT32_MAX ){
         socks5_stats.historic_connections++;
     }
 }
 
-void add_bytes_transferred(uint64_t bytes){
-    if(bytes + socks5_stats.bytes_transfered < UINT64_MAX){
+void add_bytes_transferred(uint32_t bytes){
+    if(bytes + socks5_stats.bytes_transfered < UINT32_MAX){
         socks5_stats.bytes_transfered+=bytes;
     }
     // TODO: Error

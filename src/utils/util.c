@@ -7,8 +7,7 @@
 #include <stdlib.h>
 
 const char *
-printFamily(struct addrinfo *aip)
-{
+printFamily(struct addrinfo *aip) {
 	switch (aip->ai_family) {
 	case AF_INET:
 		return "inet";
@@ -24,8 +23,7 @@ printFamily(struct addrinfo *aip)
 }
 
 const char *
-printType(struct addrinfo *aip)
-{
+printType(struct addrinfo *aip) {
 	switch (aip->ai_socktype) {
 	case SOCK_STREAM:
 		return "stream";
@@ -41,8 +39,7 @@ printType(struct addrinfo *aip)
 }
 
 const char *
-printProtocol(struct addrinfo *aip)
-{
+printProtocol(struct addrinfo *aip) {
 	switch (aip->ai_protocol) {
 	case 0:
 		return "default";

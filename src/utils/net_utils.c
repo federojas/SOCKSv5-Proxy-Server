@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <netdb.h>
 
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -14,7 +15,7 @@
 
 extern const char *
 sockaddr_to_human(char *buff, const size_t buffsize,
-                  const struct sockaddr *addr) {
+                  const struct sockaddr_storage *addr) {
     if(addr == 0) {
         strncpy(buff, "null", buffsize);
         return buff;
@@ -23,7 +24,7 @@ sockaddr_to_human(char *buff, const size_t buffsize,
     void *p = 0x00;
     bool handled = false;
 
-    switch(addr->sa_family) {
+    switch(addr->ss_family) {
         case AF_INET:
             p    = &((struct sockaddr_in *) addr)->sin_addr;
             port =  ((struct sockaddr_in *) addr)->sin_port;
@@ -36,7 +37,7 @@ sockaddr_to_human(char *buff, const size_t buffsize,
             break;
     }
     if(handled) {
-        if (inet_ntop(addr->sa_family, p,  buff, buffsize) == 0) {
+        if (inet_ntop(addr->ss_family, p,  buff, buffsize) == 0) {
             strncpy(buff, "unknown ip", buffsize);
             buff[buffsize - 1] = 0;
         }
@@ -55,49 +56,3 @@ sockaddr_to_human(char *buff, const size_t buffsize,
 
     return buff;
 }
-
-int
-sock_blocking_write(const int fd, buffer *b) {
-        int  ret = 0;
-    ssize_t  nwritten;
-	 size_t  n;
-	uint8_t *ptr;
-
-    do {
-        ptr = buffer_read_ptr(b, &n);
-        nwritten = send(fd, ptr, n, MSG_NOSIGNAL);
-        if (nwritten > 0) {
-            buffer_read_adv(b, nwritten);
-        } else /* if (errno != EINTR) */ {
-            ret = errno;
-            break;
-        }
-    } while (buffer_can_read(b));
-
-    return ret;
-}
-
-int
-sock_blocking_copy(const int source, const int dest) {
-    int ret = 0;
-    char buf[4096];
-    ssize_t nread;
-    while ((nread = recv(source, buf, N(buf), 0)) > 0) {
-        char* out_ptr = buf;
-        ssize_t nwritten;
-        do {
-            nwritten = send(dest, out_ptr, nread, MSG_NOSIGNAL);
-            if (nwritten > 0) {
-                nread -= nwritten;
-                out_ptr += nwritten;
-            } else /* if (errno != EINTR) */ {
-                ret = errno;
-                goto error;
-            }
-        } while (nread > 0);
-    }
-    error:
-
-    return ret;
-}
-

@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include "buffer.h"
-#include "logger.h"
 
 static const int IPV4_LENGTH = 4;
 static const int IPV6_LENGTH = 16;
