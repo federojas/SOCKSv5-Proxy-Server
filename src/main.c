@@ -288,7 +288,7 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         return -1;
     }
     else {
-        log_print(INFO, "\nWaiting for new %s %s connection on %s socket with fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "SOCKSv5":"manager", udp_socket ? "TCP":"UDP", new_socket);
+        log_print(INFO, "Waiting for new %s %s connection on %s socket with fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "SOCKSv5":"manager", udp_socket ? "UDP":"TCP", new_socket);
     }
 
     return new_socket;

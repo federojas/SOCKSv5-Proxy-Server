@@ -620,8 +620,8 @@ auth_read(struct selector_key *key) {
         add_bytes_transferred(n);
         if(auth_parser_consume(buff,&d->parser,&error)) {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
-                ret = auth_process(d);   
-                memcpy(&ATTACHMENT(key)->log_data.user_info.username, &d->parser.username, sizeof(d->parser.username));
+                ret = auth_process(d);  
+                strcpy(ATTACHMENT(key)->log_data.username, d->parser.username.username);
             }
             else { 
                 error = true;
@@ -905,7 +905,7 @@ finally:
 
     d->status = status;
     //TODO ACA NO ME ANDA
-    &ATTACHMENT (key)->log_data.response_status = d->status;
+    ATTACHMENT(key)->log_data.response_status = d->status;
 
     // El siguiente estado es el Connecting
     return REQUEST_CONNECTING;

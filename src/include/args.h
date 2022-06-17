@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include "statistics.h"
-
+#include "user_utils.h"
 #define MAX_USERS 10
 #define MAX_CRED_SIZE 255
 #define USER_PASS_DELIMETER ':'

@@ -1,11 +1,8 @@
 #ifndef __logger_h_
 #define __logger_h_
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdbool.h>
-#include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
 #include <limits.h>  /* LONG_MIN et al */
@@ -20,7 +17,7 @@
 #include "request_parser.h"
 
 #define DATE_SIZE 21
-
+#define MAX_USER_SIZE 256
 typedef enum {DEBUG=0, INFO, LOG_ERROR, FATAL} LOG_LEVEL;
 
 typedef enum log_type {
@@ -30,7 +27,7 @@ typedef enum log_type {
 
 typedef struct log_data {
     char date[DATE_SIZE];
-    struct user_info user_info;
+    char username[MAX_USER_SIZE];
     struct sockaddr_storage client_addr;
     enum socks5_addr_type dest_addr_atyp;
     union socks5_addr dest_addr;
