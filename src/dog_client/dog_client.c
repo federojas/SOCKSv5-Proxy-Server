@@ -18,8 +18,8 @@
 #define MAX_ATTEMPS 3
 #define MAX_COMMANDS 12
 #define TOKEN_SIZE 4
-#define COLOR_OFF "[\033[0m]"
-#define BGREEN "[\033[1;32m]"
+#define COLOR_OFF "\033[0m"
+#define BGREEN "\033[1;32m"
 typedef bool (*req_builder)(struct dog_request *, char *);
 void help();
 static bool get_list_builder(struct dog_request *, char *);
@@ -50,7 +50,7 @@ typedef struct dog_client_command {
 // TODO: agregar las descripciones
 // Si se agrega un comando, cambiar el define de MAX_COMMANDS
 dog_client_command dog_client_commands[] = {
-    {.name = "list", .usage = "list", .builder = get_list_builder, .nparams = 0, .description="Returns a list of all users registered on the server", .on_success_message="Users:" },
+    {.name = "list", .usage = "list <page_number>", .builder = get_list_builder, .nparams = 0, .description="Returns a list of all users registered on the server", .on_success_message="Users:" },
     {.name = "hist", .usage = "hist", .builder = get_historic_conn_builder, .nparams = 0, .description="Returns the amount of historic connections over the server", .on_success_message="Amount of historic connections:" },
     {.name = "conc", .usage = "conc", .builder = get_conc_conn_builder, .nparams = 0, .description="Returns the amount of concurrent connections over the server", .on_success_message="Amount of concurrent connections:" },
     {.name = "bytes", .usage = "bytes", .builder = get_bytes_transf_builder, .nparams = 0, .description="Returns the amount of bytes transfered over the server", .on_success_message="Amount of bytes transfered:" },
@@ -61,7 +61,7 @@ dog_client_command dog_client_commands[] = {
     {.name = "del", .usage = "del user:pass", .builder = alter_del_user_builder, .nparams = 1, .description="Command to delete a user", .on_success_message="User deleted successfully" },
     {.name = "sniff", .usage = "sniff on / sniff off", .builder = alter_toggle_sniff_builder, .nparams = 1, .description="Command to toggle password disector over the server", .on_success_message="Disector toggled!" }, 
     {.name = "auth", .usage = "auth on / auth off", .builder = alter_toggle_auth_builder, .nparams = 1, .description="Command to toggle authentication over the server", .on_success_message="Authentication toggled!" },
-    {.name = "setpage", .usage = "setpage n (n between 1 and 200)", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size", .on_success_message="Page size set successfully" },
+    {.name = "setpage", .usage = "setpage <page_size> (n between 1 and 200)", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size", .on_success_message="Page size set successfully" },
 };
 
 static bool done = false;
