@@ -16,6 +16,7 @@
 #include "netutils.h"
 #include "buffer.h"
 #include "statistics.h"
+#include "dog_manager.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
@@ -50,7 +51,7 @@ int main(const int argc, char **argv) {
     int ret = 0;
     int current_sock_fd = -1;
     int proxy_socks5[2], proxy_socks5_size =0;
-    //int server_manager[2], server_manager_size = 0;
+    int server_manager[2], server_manager_size = 0;
     parse_args(argc, argv, &socks5_args);
     stats_init(&socks5_stats);
     
@@ -86,7 +87,7 @@ int main(const int argc, char **argv) {
 
 
     //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
-    /*
+    
     current_sock_fd = build_passive_socket(ADDR_IPV4, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
@@ -111,7 +112,7 @@ int main(const int argc, char **argv) {
     if (server_manager_size == 0) {
         log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for server manager");
     }
-    */
+    
 
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
@@ -150,19 +151,19 @@ int main(const int argc, char **argv) {
     }
 
     // TODO: manager handler
-    // const struct fd_handler manager = {
-    //     .handle_read       = manager_passive_accept,
-    //     .handle_write      = NULL,
-    //     .handle_close      = NULL, // nada que liberar
-    // };
+    const struct fd_handler manager = {
+        .handle_read       = manager_passive_accept,
+        .handle_write      = NULL,
+        .handle_close      = NULL, // nada que liberar
+    };
 
-    // for (int i = 0; i < server_manager_size; i++) {
-    //     ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
-    //     if (ss != SELECTOR_SUCCESS) {
-    //         err_msg = "Error registering server manager passive fd";
-    //         goto finally;
-    //     }
-    // }
+    for (int i = 0; i < server_manager_size; i++) {
+        ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
+        if (ss != SELECTOR_SUCCESS) {
+            err_msg = "Error registering server manager passive fd";
+            goto finally;
+        }
+    }
 
     for(;!done;) {
         err_msg = NULL;
@@ -198,11 +199,11 @@ finally:
         close(proxy_socks5[i]);
     }
 
-    /*
+    
     for (int i = 0; i < server_manager_size; i++){
         close(server_manager[i]);
     }
-    */
+   
 
     socksv5_pool_destroy();
 

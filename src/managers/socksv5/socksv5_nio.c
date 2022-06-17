@@ -923,7 +923,7 @@ request_connecting(struct selector_key *key)
     if (getsockopt(*d->orig.conn.origin_fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
         selector_set_interest(key->s, *d->orig.conn.client_fd, OP_WRITE);   
         if(error == 0) {
-            inc_current_connections(); // conn with origin
+            //inc_current_connections(); // conn with origin CREO QUE NO VA
             d->client.request.status = SOCKS5_STATUS_SUCCEED;
         } else {
             d->client.request.status = errno_to_socks(error);
