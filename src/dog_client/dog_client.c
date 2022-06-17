@@ -275,22 +275,20 @@ static bool get_user_page_size_builder(struct dog_request * dog_request, char * 
     return true;
 }
 
-// TODO: max length
 static bool alter_add_user_builder(struct dog_request * dog_request, char * input) {
     header_builder(dog_request, TYPE_ALTER, ALTER_CMD_ADD_USER);
     if(*input == USER_PASS_DELIMETER)
         return false;
     char * temp = strchr(input, USER_PASS_DELIMETER);
-    if(temp == NULL || *(temp++) == '\0') 
+    if(temp == NULL || strlen(temp) > MAX_CRED_SIZE || *(temp++) == '\0' || strlen(temp) > MAX_CRED_SIZE) 
         return false;    
     strcpy(dog_request->current_dog_data.string, input);
     return true;
 }
 
-// TODO: max length
 static bool alter_del_user_builder(struct dog_request * dog_request, char * input) {
     header_builder(dog_request, TYPE_ALTER, ALTER_CMD_ADD_USER);
-    if(input == NULL)
+    if(input == NULL || strlen(input) > MAX_CRED_SIZE)
         return false;
     strcpy(dog_request->current_dog_data.string, input);
     return true;

@@ -173,32 +173,29 @@ static bool check_alter_uint8(struct dog_request dog_request) {
     return true;
 }
 
-//TODO: el chequeo de max length
 static bool check_alter_add_user(char * string) {
     if(*string == USER_PASS_DELIMETER)
         return false;
     char * temp = strchr(string, USER_PASS_DELIMETER);
-    if(temp == NULL || *(temp++) == '\0') 
+    if(temp == NULL || strlen(temp) > MAX_CRED_SIZE ||  *(temp++) == '\0' || strlen(temp) > MAX_CRED_SIZE) 
         return false;    
     return true;
 }
 
 static bool check_alter_string(struct dog_request dog_request) {
-    bool ret = true;
     switch(dog_request.current_dog_cmd) {
         case ALTER_CMD_ADD_USER:
-            if(check_alter_add_user(dog_request.current_dog_data.string))
-                ret = false;
+            if(!check_alter_add_user(dog_request.current_dog_data.string))
+                return false;
         case ALTER_CMD_DEL_USER:
-            if(dog_request.current_dog_data.string == NULL )
-                ret = false;
+            if(dog_request.current_dog_data.string == NULL || strlen(dog_request.current_dog_data.string) > MAX_CRED_SIZE )
+                return false;
     }
-    return ret;
+    return true;
 }
 
-
 static bool check_arguments(struct dog_request dog_request) {
-    bool ret = false;
+    bool ret = true;
     switch(cmd_to_req_data_type(dog_request.dog_type, dog_request.current_dog_cmd)) {
         case UINT_8_DATA:
             ret = check_alter_uint8(dog_request);
