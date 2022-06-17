@@ -119,14 +119,14 @@ dog_data_type cmd_to_req_data_type(unsigned dog_type, unsigned dog_cmd);
 dog_data_type cmd_to_resp_data_type(unsigned dog_type, unsigned dog_cmd);
 
 /* parser method */
-int raw_packet_to_dog_request(char * raw, dog_request* request);
+int raw_packet_to_dog_request(char * raw, struct dog_request* request);
 
 /* parser method */
-int raw_packet_to_dog_response(char * raw, dog_response* response);
+int raw_packet_to_dog_response(char * raw, struct dog_response* response);
 
-int dog_request_to_packet(char* output, dog_request * input, int* size);
+int dog_request_to_packet(char* output, struct dog_request * input, int* size);
 
-int dog_response_to_packet(char* output, dog_response * input, int* size);
+int dog_response_to_packet(char* output, struct dog_response * input, int* size);
 
 char* error_report(dog_status_code status_code);
 
