@@ -276,8 +276,8 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
             close(new_socket);
             return -1;
         }
-        if (bind(new_socket, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0) {
 
+        if (bind(new_socket, (struct sockaddr *)&addr_6, sizeof(addr_6)) < 0) {
             log_print(LOG_ERROR, "Unable to bind socket");
             close(new_socket);
             return -1;

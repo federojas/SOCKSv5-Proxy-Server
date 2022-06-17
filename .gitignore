@@ -68,3 +68,9 @@ dkms.conf
 tcpTransparentServer
 socks5d
 *.tasks
+
+strace_out
+
+*.cppcheck
+
+PVS-Studio.log
