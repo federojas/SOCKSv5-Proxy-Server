@@ -302,5 +302,9 @@ static void alter_cmd_toggle_auth_handler(dog_response * dog_response, dog_reque
 }
 
 static void alter_cmd_user_page_size(dog_response * dog_response, dog_request dog_request) {
+    fprintf(stderr,"llegue al set_page");
+    fprintf(stderr, "el viejo: %d", dog_manager.page_size);
+    fprintf(stderr, "el que llega: %d", dog_request.current_dog_data.dog_uint8);
     dog_manager.page_size = dog_request.current_dog_data.dog_uint8;
+    fprintf(stderr, "el nuevo: %d", dog_manager.page_size);
 }
