@@ -1,3 +1,5 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -174,7 +176,7 @@ int main(const int argc, char **argv) {
     
 finally:
     if(ss != SELECTOR_SUCCESS) {
-        fprintf(stderr, "%s: %s\n", (err_msg == NULL) ? "": err_msg,
+        fprintf(stderr, "%s: %s\n", err_msg,
                                   ss == SELECTOR_IO
                                       ? strerror(errno)
                                       : selector_error(ss));

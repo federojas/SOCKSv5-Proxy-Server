@@ -1,3 +1,5 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include <stdio.h>     /* for printf */
 #include <stdlib.h>    /* for exit */
 #include <limits.h>    /* LONG_MIN et al */
@@ -42,6 +44,8 @@ user(char *s, struct user_info *user) {
 
         user->username = s;
         user->password = p;
+
+        // TODO: absent siempre es false aca (PVS)
         if(absent) {
             //Buscar en admin
         }
