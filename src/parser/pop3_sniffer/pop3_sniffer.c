@@ -152,8 +152,8 @@ enum pop3_sniffer_state pop3_sniffer_parser_consume(struct pop3_sniffer_parser *
     }
 
     if(p->current_state == POP3_SUCCESS) {
-        log_data->sniffed_user_info.username = p->username;
-        log_data->sniffed_user_info.password = p->password;
+        strcpy(log_data->sniffed_user_info.username, p->username);
+        strcpy(log_data->sniffed_user_info.password, p->password);
         pop3_sniffer_print(log_data);
     }
 

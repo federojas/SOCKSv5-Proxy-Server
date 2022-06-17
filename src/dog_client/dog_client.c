@@ -50,7 +50,7 @@ typedef struct dog_client_command {
 // TODO: agregar las descripciones
 // Si se agrega un comando, cambiar el define de MAX_COMMANDS
 dog_client_command dog_client_commands[] = {
-    {.name = "list", .usage = "list <page_number>", .builder = get_list_builder, .nparams = 0, .description="Returns a list of all users registered on the server", .on_success_message="Users:" },
+    {.name = "list", .usage = "list <page_number>", .builder = get_list_builder, .nparams = 1, .description="Returns a list of all users registered on the server", .on_success_message="Users:" },
     {.name = "hist", .usage = "hist", .builder = get_historic_conn_builder, .nparams = 0, .description="Returns the amount of historic connections over the server", .on_success_message="Amount of historic connections:" },
     {.name = "conc", .usage = "conc", .builder = get_conc_conn_builder, .nparams = 0, .description="Returns the amount of concurrent connections over the server", .on_success_message="Amount of concurrent connections:" },
     {.name = "bytes", .usage = "bytes", .builder = get_bytes_transf_builder, .nparams = 0, .description="Returns the amount of bytes transfered over the server", .on_success_message="Amount of bytes transfered:" },

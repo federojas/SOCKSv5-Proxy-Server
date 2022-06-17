@@ -275,7 +275,7 @@ static void alter_cmd_add_user_handler(dog_response * dog_response, dog_request 
     } else {
         dog_response->dog_status_code = SC_SERVER_IS_FULL;
     }  
-    fprintf(stderr,"-----------------------");
+    fprintf(stderr,"-----------------------\n");
     for(int i = 0; i < MAX_USERS; i++) {
         fprintf(stderr,"usuario: %s %s \n ", socks5_args.users[i].username, socks5_args.users[i].password);
 
