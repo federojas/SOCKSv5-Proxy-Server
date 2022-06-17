@@ -2,10 +2,10 @@
 #define USER_UTILS_H_
 
 #include <stdbool.h>
-
+#define CRED_SIZE 256
 typedef struct user_info {
-    char * username;
-    char * password;
+    char username[CRED_SIZE];
+    char password[CRED_SIZE];
 } user_info;
 
 #define MAX_USERS 10

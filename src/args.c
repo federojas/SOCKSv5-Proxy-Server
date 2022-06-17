@@ -42,8 +42,8 @@ void user(char *s, struct user_info *user) {
             fprintf(stderr, "Username or password specified too long, maximum length is 255 characters\n");
             exit(1);
         }
-        user->username = s;
-        user->password = p;
+        strcpy(user->username,s);
+        strcpy(user->password,p);
     }
 }
 
