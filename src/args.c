@@ -34,7 +34,7 @@ void user(char *s, struct user_info *user) {
     } else {
         *p = 0;
         p++;
-        if(user_registerd(s, p)) {
+        if(user_registerd(s)) {
             fprintf(stderr, "Duplicate user specified\n");
             exit(1);
         }

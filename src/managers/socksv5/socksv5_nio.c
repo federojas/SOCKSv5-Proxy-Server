@@ -460,8 +460,8 @@ on_hello_method(struct hello_parser *p, const uint8_t method) {
         if(method == METHOD_AUTH_REQ) 
             *selected = method;
     } else {
-        if((method == METHOD_NO_AUTH_REQ) || (method == METHOD_AUTH_REQ)) 
-            *selected = method;
+        if((method == METHOD_NO_AUTH_REQ)) 
+            *selected = METHOD_NO_AUTH_REQ;
     }
 }
 
@@ -587,7 +587,7 @@ auth_init(const unsigned state, struct selector_key *key) {
 
 static uint8_t 
 check_auth_credentials(const struct auth_st *d) {
-    if(user_registerd(d->username->username, d->password->password) != 0) 
+    if(check_credentials(d->username->username, d->password->password) != 0) 
         return AUTH_SUCCESS;
     return AUTH_FAIL;
 }

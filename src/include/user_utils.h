@@ -12,12 +12,14 @@ typedef struct user_info {
 
 #define USER_PASS_DELIMETER ':'
 
-bool user_registerd(char * user, char * pass);
+bool user_registerd(char * user);
+
+bool check_credentials(char * user, char * pass);
 
 bool server_is_full();
 
 void add_user(char * user, char * pass);
 
-void delete_user(char * user, char * pass);
+void delete_user(char * user);
 
 #endif 

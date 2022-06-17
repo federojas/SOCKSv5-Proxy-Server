@@ -170,7 +170,7 @@ int main(int argc, const char *argv[])
             printf("Invalid command.\n");
             continue;
         }
-        if (valid_param < 0)
+        if (valid_param == false)
         {
             printf("Invalid parameter\n");
             printf("Command: %s\t usage: %s\t description: %s\n", 
@@ -287,7 +287,7 @@ static bool alter_add_user_builder(struct dog_request * dog_request, char * inpu
 }
 
 static bool alter_del_user_builder(struct dog_request * dog_request, char * input) {
-    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_ADD_USER);
+    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_DEL_USER);
     if(input == NULL || strlen(input) > MAX_CRED_SIZE)
         return false;
     strcpy(dog_request->current_dog_data.string, input);
@@ -295,11 +295,10 @@ static bool alter_del_user_builder(struct dog_request * dog_request, char * inpu
 }
 
 static bool alter_toggle_sniff_builder(struct dog_request * dog_request, char * input) {
-    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_ADD_USER);
-    int arg = atoi(input);
-    if( arg == false || arg == true) {
+    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_TOGGLE_SNIFFING);
+    if( strcmp(input,"on") == 0 || strcmp(input,"off") == 0) {
         // TODO: usamos memcpy ya que atoi devuelve int en lugar de uint8? por overflow?
-        dog_request->current_dog_data.dog_uint8 = arg;
+        dog_request->current_dog_data.dog_uint8 = strcmp(input,"on") == 0 ? 1 : 0;
         return true;
     }
         
@@ -307,19 +306,17 @@ static bool alter_toggle_sniff_builder(struct dog_request * dog_request, char * 
 }
 
 static bool alter_toggle_auth_builder(struct dog_request * dog_request, char * input) {
-    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_ADD_USER);
-    int arg = atoi(input);
-    if( arg == false || arg == true) {
+    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_TOGGLE_AUTH);
+    if( strcmp(input,"on") == 0 || strcmp(input,"off") == 0) {
         // TODO: usamos memcpy ya que atoi devuelve int en lugar de uint8? por overflow?
-        dog_request->current_dog_data.dog_uint8 = arg;
+        dog_request->current_dog_data.dog_uint8 = strcmp(input,"on") == 0 ? 1 : 0;
         return true;
     }
-        
     return false;
 }
 
 static bool alter_user_page_size_builder(struct dog_request * dog_request, char * input) {
-    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_ADD_USER);
+    header_builder(dog_request, TYPE_ALTER, ALTER_CMD_USER_PAGE_SIZE);
     int arg = atoi(input);
     if(arg >= MIN_PAGE_SIZE && arg <= MAX_PAGE_SIZE) {
         // TODO: usamos memcpy ya que atoi devuelve int en lugar de uint8? por overflow?
@@ -349,7 +346,7 @@ void response_handler(struct dog_request dog_request, struct dog_response dog_re
         printf("Error: %s.\n", error_report(dog_response.dog_status_code));
         return;
     }
-    printf("dog_type: %d, dog_cmd: %d\n", dog_response.dog_type, dog_response.current_dog_cmd);
+    
     switch (cmd_to_resp_data_type(dog_response.dog_type, dog_response.current_dog_cmd))
     {
         case UINT_8_DATA:
@@ -365,6 +362,7 @@ void response_handler(struct dog_request dog_request, struct dog_response dog_re
             printf("%s: %s", message, dog_response.current_dog_data.string);
             break;
         case NO_DATA:
+            printf("done\n");
             break;
         default:
             printf("%s", message);
