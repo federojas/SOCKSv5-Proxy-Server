@@ -56,7 +56,6 @@ int main(const int argc, char **argv) {
     
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
-
     //Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
     current_sock_fd = build_passive_socket(ADDR_IPV4, false);
     if (current_sock_fd < 0) {

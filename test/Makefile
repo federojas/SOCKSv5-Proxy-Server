@@ -1,15 +1,21 @@
-INCLUDE = -I ./include -I ../src
+INCLUDE = -I ../src/include
 
-CC=gcc
 LIBRARIES=-lm -lcheck -lrt -lpthread -lsubunit
-CFLAGS=-Wall -pedantic -std=c11 -g -pthread -fsanitize=address $(INCLUDE)
+CFLAGS= -g --std=c11 -fsanitize=address -Wall -Wextra -Werror -Wno-unused-parameter -pthread -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L $(INCLUDE)
 
+BUFFER_TEST=./tests/buffer_test.o ../src/buffer/buffer.o
+
+tests: buffer_test 
+
+buffer_test: $(BUFFER_TEST)
+	cd tests;
+	$(CC) $(CFLAGS) -o ./buffer_test ./tests/buffer_test.c  ../src/buffer/buffer.c $(BUFFER_TEST)
+	cd ..;
 all: main
-
-main: main.c
+main:buffer_test
 
 clean: 
 	rm -rf */*.o
 
-.PHONY: clean
+.PHONY: all clean
 

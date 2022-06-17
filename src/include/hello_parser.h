@@ -6,7 +6,7 @@
 #define HELLO_PARSER_H
 #include <stdint.h>
 #include <stdbool.h>
-#include "buffer.h"
+#include "../src/include/buffer.h"
 
 static const uint8_t METHOD_NO_AUTH_REQ = 0x00;
 static const uint8_t METHOD_AUTH_REQ = 0x02;
