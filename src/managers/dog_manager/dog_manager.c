@@ -184,21 +184,19 @@ static bool check_alter_add_user(char * string) {
 }
 
 static bool check_alter_string(struct dog_request dog_request) {
-    bool ret = true;
     switch(dog_request.current_dog_cmd) {
         case ALTER_CMD_ADD_USER:
-            if(check_alter_add_user(dog_request.current_dog_data.string))
-                ret = false;
+            if(!check_alter_add_user(dog_request.current_dog_data.string))
+                return false;
         case ALTER_CMD_DEL_USER:
             if(dog_request.current_dog_data.string == NULL )
-                ret = false;
+                return false;
     }
-    return ret;
+    return true;
 }
 
-
 static bool check_arguments(struct dog_request dog_request) {
-    bool ret = false;
+    bool ret = true;
     switch(cmd_to_req_data_type(dog_request.dog_type, dog_request.current_dog_cmd)) {
         case UINT_8_DATA:
             ret = check_alter_uint8(dog_request);
