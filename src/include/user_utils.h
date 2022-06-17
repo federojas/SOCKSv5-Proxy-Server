@@ -3,6 +3,11 @@
 
 #include <stdbool.h>
 
+typedef struct user_info {
+    char * username;
+    char * password;
+} user_info;
+
 #define MAX_USERS 10
 
 #define USER_PASS_DELIMETER ':'

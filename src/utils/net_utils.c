@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <netdb.h>
 
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -12,7 +13,7 @@
 
 extern const char *
 sockaddr_to_human(char *buff, const size_t buffsize,
-                  const struct sockaddr *addr) {
+                  const struct sockaddr_storage *addr) {
     if(addr == 0) {
         strncpy(buff, "null", buffsize);
         return buff;
@@ -21,7 +22,7 @@ sockaddr_to_human(char *buff, const size_t buffsize,
     void *p = 0x00;
     bool handled = false;
 
-    switch(addr->sa_family) {
+    switch(addr->ss_family) {
         case AF_INET:
             p    = &((struct sockaddr_in *) addr)->sin_addr;
             port =  ((struct sockaddr_in *) addr)->sin_port;
@@ -34,7 +35,7 @@ sockaddr_to_human(char *buff, const size_t buffsize,
             break;
     }
     if(handled) {
-        if (inet_ntop(addr->sa_family, p,  buff, buffsize) == 0) {
+        if (inet_ntop(addr->ss_family, p,  buff, buffsize) == 0) {
             strncpy(buff, "unknown ip", buffsize);
             buff[buffsize - 1] = 0;
         }

@@ -27,7 +27,7 @@ typedef struct address_data {
 
 #define SOCKADDR_TO_HUMAN_MIN (INET6_ADDRSTRLEN + 5 + 1)
 /**
- * Describe de forma humana un sockaddr:
+ * Describe de forma humana un sockaddr_storage:
  *
  * @param buff     el buffer de escritura
  * @param buffsize el tamaño del buffer  de escritura
@@ -39,7 +39,7 @@ typedef struct address_data {
  */
 const char *
 sockaddr_to_human(char *buff, const size_t buffsize,
-                  const struct sockaddr *addr);
+                  const struct sockaddr_storage *addr);
 
 
 #endif

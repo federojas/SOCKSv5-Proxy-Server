@@ -24,8 +24,6 @@
 #include "pop3_sniffer.h"
 #include "user_utils.h"
 
-extern struct socks5_args socks5_args;
-
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
@@ -65,7 +63,7 @@ struct hello_st {
 struct auth_st {
     buffer               *rb, *wb;
     auth_parser          parser;
-    struct username*         username;
+    struct username*     username;
     struct password*     password;
     uint8_t              status;
 };
@@ -223,6 +221,8 @@ struct socks5 {
     int error;
 
     struct pop3_sniffer_parser pop3_sniffer;
+
+    struct log_data log_data;
 
     struct socks5 *next;
 };
@@ -435,7 +435,7 @@ socksv5_passive_accept(struct selector_key *key) {
 
     memcpy(&state->client_addr, &client_addr, client_addr_len);
     state->client_addr_len = client_addr_len;
-
+    state->log_data.client_addr = client_addr;
 
     ss = selector_register(key->s, client, &socks5_handler, OP_READ, state);
     if(SELECTOR_SUCCESS != ss) {
@@ -620,7 +620,8 @@ auth_read(struct selector_key *key) {
         add_bytes_transferred(n);
         if(auth_parser_consume(buff,&d->parser,&error)) {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE)) {
-                ret = auth_process(d);
+                ret = auth_process(d);   
+                memcpy(&ATTACHMENT(key)->log_data.user_info.username, &d->parser.username, sizeof(d->parser.username));
             }
             else { 
                 error = true;
@@ -709,6 +710,7 @@ request_resolv_done(struct selector_key *key) {
     struct socks5 *s = ATTACHMENT(key);
     if(s->origin_resolution == 0) {
         d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+        s->log_data.response_status = d->status;
     } else {
         s->origin_domain = s->origin_resolution->ai_family;
         s->origin_addr_len = s->origin_resolution->ai_addrlen;
@@ -748,13 +750,15 @@ request_process (struct selector_key* key, struct request_st* d) {
         case SOCKS5_REQ_CMD_CONNECT:
             // esto mejoraría enormemente de haber usado
             // sockaddr_storage en el request
-            
+            ATTACHMENT(key)->log_data.dest_addr_atyp = d->request.dest_addr_type;
             switch (d->request.dest_addr_type) {
                 case SOCKS5_REQ_ADDRTYPE_IPV4: {
                     ATTACHMENT (key)->origin_domain = AF_INET;
                     d->request.dest_addr.ipv4.sin_port = d->request.dest_port;
                     ATTACHMENT (key)->origin_addr_len = sizeof (d->request.dest_addr.ipv4);
                     memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr, sizeof (d->request.dest_addr.ipv4));
+                    memcpy(&ATTACHMENT(key)->log_data.dest_addr, &d->request.dest_addr, sizeof(d->request.dest_addr.ipv4));
+                    ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
                     ret = request_connect(key , d);
                     break;
 
@@ -763,6 +767,8 @@ request_process (struct selector_key* key, struct request_st* d) {
                     d->request.dest_addr.ipv6.sin6_port = d->request.dest_port;
                     ATTACHMENT (key) ->origin_addr_len = sizeof(d->request.dest_addr.ipv6);
                     memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr, sizeof(d->request.dest_addr.ipv6));
+                    memcpy(&ATTACHMENT(key)->log_data.dest_addr, &d->request.dest_addr, sizeof(d->request.dest_addr.ipv6));
+                    ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
                     ret = request_connect(key , d);
                     break;
 
@@ -778,10 +784,13 @@ request_process (struct selector_key* key, struct request_st* d) {
                             ret = REQUEST_WRITE;
                             d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
                             selector_set_interest_key(key, OP_WRITE);
+                            ATTACHMENT(key)->log_data.response_status = d->status;
                         } else {
                             ret = REQUEST_RESOLV;
                             // hasta que no resuelva el nombre, no hay que hacer nada
                             selector_set_interest_key(key, OP_NOOP);
+                            memcpy(ATTACHMENT(key)->log_data.dest_addr.fqdn,d->request.dest_addr.fqdn,sizeof(d->request.dest_addr.fqdn));
+                            ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
                         }
                     }
                     break;
@@ -895,6 +904,8 @@ finally:
     }
 
     d->status = status;
+    //TODO ACA NO ME ANDA
+    &ATTACHMENT (key)->log_data.response_status = d->status;
 
     // El siguiente estado es el Connecting
     return REQUEST_CONNECTING;
@@ -917,6 +928,8 @@ request_connecting(struct selector_key *key)
         } else {
             d->client.request.status = errno_to_socks(error);
             selector_set_interest_key(key, OP_NOOP);
+            ATTACHMENT(key)->log_data.response_status = d->client.request.status;
+            sign_in_print(&ATTACHMENT(key)->log_data);
         }
 
         if(-1 != request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
@@ -926,6 +939,7 @@ request_connecting(struct selector_key *key)
         else {
             ret = ERROR;
         }
+        ATTACHMENT(key)->log_data.response_status = d->client.request.status;
     } 
 
     return ret;
@@ -957,6 +971,7 @@ static unsigned request_write(struct selector_key *key)
             selector_set_interest_key(key, OP_READ);
             ret = COPY;
         }
+        sign_in_print((&ATTACHMENT(key)->log_data));
     }
 
     return ret;
@@ -980,15 +995,14 @@ static void pop3_sniffer(struct selector_key *key, uint8_t *ptr, ssize_t size) {
         size_t count;
         uint8_t *pop3_ptr = buffer_write_ptr(&p->buffer, &count);
     
-        if((unsigned) size <= count){
+        if((unsigned) size <= count) {
             memcpy(pop3_ptr, ptr, size);
             buffer_write_adv(&p->buffer,size);
-        }
-        else{
+        } else {
             memcpy(pop3_ptr,ptr,count);
             buffer_write_adv(&p->buffer,count);
         }
-        pop3_sniffer_parser_consume(p);
+        pop3_sniffer_parser_consume(p, &ATTACHMENT(key)->log_data);
     }
 }
 
@@ -1064,7 +1078,7 @@ static unsigned copy_write(struct selector_key *key) {
     } else {
         add_bytes_transferred(n);
         //TODO chequear key???
-        if(socks5_args.spoofing){
+        if(socks5_args.spoofing) {
             pop3_sniffer(key,ptr,n);
         }
         buffer_read_adv(b, n);

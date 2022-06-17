@@ -14,11 +14,6 @@
 #define DEFAULT_MNG_ADDR "127.0.0.1"
 #define DEFAULT_PROXY_ADDR "0.0.0.0"
 
-typedef struct user_info {
-    char * username;
-    char * password;
-} user_info;
-
 struct socks5_args {
     char           *socks_addr;
     unsigned short  socks_port;
