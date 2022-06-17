@@ -8,9 +8,9 @@ BUFFER_TEST=./tests/buffer_test.o ../src/buffer/buffer.o
 tests: buffer_test 
 
 buffer_test: $(BUFFER_TEST)
-	cd tests;
+
 	$(CC) $(CFLAGS) -o ./buffer_test ./tests/buffer_test.c  ../src/buffer/buffer.c $(BUFFER_TEST)
-	cd ..;
+	
 all: main
 main:buffer_test
 

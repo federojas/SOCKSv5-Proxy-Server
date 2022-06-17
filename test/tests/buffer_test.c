@@ -5,9 +5,9 @@
 #include "buffer.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
+// test_buffer_misc
 
-
-START_TEST (test_buffer_misc) {
+START_TEST () {
     // struct buffer buf;
     // buffer *b = &buf;
     // uint8_t direct_buff[6];
@@ -96,10 +96,10 @@ END_TEST
 Suite *
 suite(void) {
     Suite *s   = suite_create("buffer");
-    TCase *tc  = tcase_create("buffer");
+    // TCase *tc  = tcase_create("buffer");
 
-    tcase_add_test(tc, test_buffer_misc);
-    suite_add_tcase(s, tc);
+    // tcase_add_test(tc, test_buffer_misc);
+    // suite_add_tcase(s, tc);
 
     return s;
 }
