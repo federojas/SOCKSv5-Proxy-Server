@@ -19,8 +19,6 @@
 
 #define BUFFER_SIZE 4096
 #define DEFAULT_PAGE_SIZE 200
-#define MAX_PAGE_SIZE 200
-#define MIN_PAGE_SIZE 1
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 typedef void (*resp_handler_fun) (dog_response *, dog_request);
 extern struct socks5_stats socks5_stats;
@@ -175,6 +173,7 @@ static bool check_alter_uint8(struct dog_request dog_request) {
     return true;
 }
 
+//TODO: el chequeo de max length
 static bool check_alter_add_user(char * string) {
     if(*string == USER_PASS_DELIMETER)
         return false;
@@ -183,7 +182,7 @@ static bool check_alter_add_user(char * string) {
         return false;    
     return true;
 }
-// fico:
+
 static bool check_alter_string(struct dog_request dog_request) {
     bool ret = true;
     switch(dog_request.current_dog_cmd) {

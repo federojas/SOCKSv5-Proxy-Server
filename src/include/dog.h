@@ -13,7 +13,8 @@
 #define DOG_REQUEST_ID_SIZE 2
 #define ERROR -1
 #define SUCCESS 0
-
+#define MAX_PAGE_SIZE 200
+#define MIN_PAGE_SIZE 1
 
 
 typedef enum dog_packet_type {
