@@ -188,7 +188,7 @@ static bool check_alter_string(struct dog_request dog_request) {
             if(!check_alter_add_user(dog_request.current_dog_data.string))
                 return false;
         case ALTER_CMD_DEL_USER:
-            if(dog_request.current_dog_data.string == NULL || dog_request.current_dog_data.string > MAX_CRED_SIZE )
+            if(dog_request.current_dog_data.string == NULL || strlen(dog_request.current_dog_data.string) > MAX_CRED_SIZE )
                 return false;
     }
     return true;
