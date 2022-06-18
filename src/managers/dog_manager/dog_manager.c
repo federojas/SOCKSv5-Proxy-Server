@@ -128,7 +128,6 @@ void manager_passive_accept(struct selector_key *key) {
 }
 
 static bool check_admin_token(struct dog_request dog_request) {
-    fprintf(stderr, "token de server: %d, token de request: %d", socks5_args.manager_token, dog_request.token);
     if(dog_request.token != socks5_args.manager_token)
         return false;
     return true;
