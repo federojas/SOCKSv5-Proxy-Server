@@ -50,18 +50,18 @@ typedef struct dog_client_command {
 
 // Si se agrega un comando, cambiar el define de MAX_COMMANDS
 dog_client_command dog_client_commands[] = {
-    {.name = "list", .usage = "list <page_number>", .builder = get_list_builder, .nparams = 1, .description="Returns a list of all users registered on the server", .on_success_message="Users" },
+    {.name = "list", .usage = "list <page_number>", .builder = get_list_builder, .nparams = 1, .description="Returns the specified page of the list of users registered on the server", .on_success_message="Users" },
     {.name = "hist", .usage = "hist", .builder = get_historic_conn_builder, .nparams = 0, .description="Returns the amount of historic connections over the server", .on_success_message="Amount of historic connections" },
     {.name = "conc", .usage = "conc", .builder = get_conc_conn_builder, .nparams = 0, .description="Returns the amount of concurrent connections over the server", .on_success_message="Amount of concurrent connections" },
     {.name = "bytes", .usage = "bytes", .builder = get_bytes_transf_builder, .nparams = 0, .description="Returns the amount of bytes transfered over the server", .on_success_message="Amount of bytes transfered" },
-    {.name = "checksniff", .usage = "checksniff", .builder = get_sniffing_builder, .nparams = 0, .description="Returns the status of the password disector over the server", .on_success_message="Disectors status" },
+    {.name = "checksniff", .usage = "checksniff", .builder = get_sniffing_builder, .nparams = 0, .description="Returns the status of the password disector over the server", .on_success_message="POP3 credential sniffer status" },
     {.name = "checkauth", .usage = "checkauth", .builder = get_auth_builder, .nparams = 0, .description="Returns the status of authentication over the server", .on_success_message="Authentication status" },
     {.name = "getpage", .usage = "getpage", .builder = get_user_page_size_builder, .nparams = 0, .description="Returns the amount of users per page (max 200)", .on_success_message="Users per page" },
     {.name = "add", .usage = "add user:pass", .builder = alter_add_user_builder, .nparams = 1, .description="Command to add a user", .on_success_message="User added successfully" },
-    {.name = "del", .usage = "del user:pass", .builder = alter_del_user_builder, .nparams = 1, .description="Command to delete a user", .on_success_message="User deleted successfully" },
-    {.name = "sniff", .usage = "sniff on / sniff off", .builder = alter_toggle_sniff_builder, .nparams = 1, .description="Command to toggle POP3 credential sniffer over the server", .on_success_message="Disector toggled!" }, 
-    {.name = "auth", .usage = "auth on / auth off", .builder = alter_toggle_auth_builder, .nparams = 1, .description="Command to toggle authentication over the server", .on_success_message="Authentication toggled!" },
-    {.name = "setpage", .usage = "setpage <page_size> (n between 1 and 200)", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size", .on_success_message="Page size set successfully" },
+    {.name = "del", .usage = "del user", .builder = alter_del_user_builder, .nparams = 1, .description="Command to delete a user", .on_success_message="User deleted successfully" },
+    {.name = "sniff", .usage = "sniff on/off", .builder = alter_toggle_sniff_builder, .nparams = 1, .description="Command to toggle POP3 credential sniffer over the server", .on_success_message="POP3 credential sniffer toggled!" }, 
+    {.name = "auth", .usage = "auth on/off", .builder = alter_toggle_auth_builder, .nparams = 1, .description="Command to toggle authentication over the server", .on_success_message="Authentication toggled!" },
+    {.name = "setpage", .usage = "setpage <page_size> (page_size between 1 and 200)", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size", .on_success_message="Page size set successfully" },
 };
 
 static bool done = false;

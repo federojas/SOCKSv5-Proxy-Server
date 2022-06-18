@@ -51,8 +51,8 @@ void user(char *s, struct user_info *user) {
 
 static void
 version(void) {
-    fprintf(stderr, "Servidor SOCKSv5 version: " DEFAULT_VERSION_NUMBER "\n"
-                    "ITBA Protocolos de ComunicaciÃ³n 2022/1 -- Grupo 3\n"
+    fprintf(stderr, "SOCKSv5 server version: " DEFAULT_VERSION_NUMBER "\n"
+                    "ITBA Protocolos de Comunicación 2022/1 -- Group 3\n"
                     "DOG SOFTWARE LICENSED PRODUCT\n");
 }
 
@@ -61,14 +61,14 @@ usage(const char *progname) {
     fprintf(stderr,
         "Usage: %s [OPTION]...\n"
         "\n"
-        "   -h               Imprime la ayuda y termina.\n"
-        "   -l <SOCKS addr>  DirecciÃ³n donde servirÃ¡ el proxy SOCKS.\n"
-        "   -L <conf  addr>  DirecciÃ³n donde servirÃ¡ el servicio de management.\n"
-        "   -p <SOCKS port>  Puerto entrante conexiones SOCKS.\n"
-        "   -P <conf port>   Puerto entrante conexiones configuracion\n"
-        "   -u <name>:<pass> Usuario y contraseÃ±a de usuario que puede usar el proxy. Hasta 10.\n"
-        "   -N               Deshabilitar spoofing de contraseÃ±as sobre POP3.\n"
-        "   -v               Imprime informaciÃ³n sobre la versiÃ³n versiÃ³n y termina.\n"
+        "   -h               Prints help info and finishes.\n"
+        "   -l <SOCKS addr>  Adress (ipv4 or ipv6) where SOCKS server will serve.\n"
+        "   -L <mng  addr>   Adress (ipv4 or ipv6) where server manager will serve.\n"
+        "   -p <SOCKS port>  Port for incoming connection on SOCKS server.\n"
+        "   -P <mng port>    Port for incoming connection on server manager\n"
+        "   -u <name>:<pass> Username and password of SOCKS server allowed users. Max 10.\n"
+        "   -N               Turn off POP3 credential sniffing.\n"
+        "   -v               Prints current version info and finishes.\n"
         "\n",
         progname);
     exit(1);

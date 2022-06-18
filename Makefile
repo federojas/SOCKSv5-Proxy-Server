@@ -1,8 +1,5 @@
 all: 
-	cd src; make all
-
-test: 
-	cd test; make all		
+	cd src; make all		
 
 clean:
 	rm -r -f *.o socks5d;	
@@ -10,4 +7,4 @@ clean:
 	cd test; make clean
 	cd src;
 
-.PHONY: test all clean
+.PHONY: all clean
