@@ -18,7 +18,6 @@
 #define TIMEOUT_SEC 5
 #define MAX_ATTEMPS 3
 #define MAX_COMMANDS 12
-#define TOKEN_SIZE 4
 #define COLOR_OFF "\033[0m"
 #define BGREEN "\033[1;32m"
 typedef bool (*req_builder)(struct dog_request *, char *);
@@ -77,9 +76,10 @@ int main(int argc, const char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    char * token_env = getenv("DOG_TOKEN");
+    char * token_env = getenv(DOG_TOKEN);
     if(token_env == NULL || strlen(token_env) != TOKEN_SIZE) {
-        fprintf(stderr, "Dog client: ERROR. DOG_TOKEN envariable doesn't exist\n");
+        fprintf(stderr, "Dog client: ERROR, erroneous or unexistent DOG_TOKEN env variable.\n");
+        fprintf(stderr, "The token name must be DOG_TOKEN and its value 4 bytes\n");
         exit(EXIT_FAILURE);
     }
     token = strtoul(token_env,NULL,10);

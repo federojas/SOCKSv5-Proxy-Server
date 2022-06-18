@@ -15,6 +15,8 @@
 #define DEFAULT_MNG_ADDR6 "::1"
 #define DEFAULT_PROXY_ADDR "0.0.0.0"
 #define DEFAULT_PROXY_ADDR6 "0::0"
+#define DOG_TOKEN "DOG_TOKEN"
+#define TOKEN_SIZE 4
 
 struct socks5_args {
     char *          socks_addr;
@@ -28,8 +30,10 @@ struct socks5_args {
     int             nusers;
     char *          version;
     struct user_info users[MAX_USERS];
-    bool spoofing;
-    bool authentication;
+
+    uint32_t        manager_token;
+    bool            spoofing;
+    bool            authentication;
 };
 
 

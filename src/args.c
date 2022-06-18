@@ -90,6 +90,14 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
     args->mng_addr6   = DEFAULT_MNG_ADDR6;
     args->mng_port   = DEFAULT_MNG_PORT;
 
+    char * token_env = getenv(DOG_TOKEN);
+    if(token_env == NULL || strlen(token_env) != TOKEN_SIZE) {
+        fprintf(stderr, "SOCKSv5: ERROR, erroneous or unexistent DOG_TOKEN env variable\n");
+        fprintf(stderr, "The token name must be DOG_TOKEN and its value 4 bytes\n");
+        exit(1);
+    }
+    args->manager_token = strtoul(token_env,NULL,10);
+
     args->spoofing = true;
     args->authentication = false;
  
