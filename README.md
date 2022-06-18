@@ -37,7 +37,7 @@ ejecutable del administrador del servidor tambien esta bajo el mismo directorio 
 -N               Deshabilitar spoofing de contrasenias sobre POP3
 -v               Imprime información sobre la versión y termina
   
-# Comandos al utiliza el administrador de servidor
+# Comandos al utilizar el administrador de servidor
 
 list        page_number   Retorna la página indicada del listado de usuarios registrados en el servidor SOCKS
 hist                      Retorna la cantidad de conexiones historicas del servidor SOCKS
