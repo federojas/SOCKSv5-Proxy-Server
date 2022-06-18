@@ -231,7 +231,10 @@ void help() {
 
 static bool get_list_builder(struct dog_request * dog_request, char * input) {
     header_builder(dog_request, TYPE_GET, GET_CMD_LIST);
-    dog_request->current_dog_data.dog_uint8 = atoi(input);
+    int size = atoi(input);
+    if(size <= 0)
+        return false;
+    dog_request->current_dog_data.dog_uint8 = size;
     return true;
 }
 
@@ -345,7 +348,7 @@ void response_handler(struct dog_request dog_request, struct dog_response dog_re
             printf("%s: %u", message, dog_response.current_dog_data.dog_uint32);
             break;
         case STRING_DATA:
-            printf("%s: %s", message, dog_response.current_dog_data.string);
+            printf("%s:\n%s", message, dog_response.current_dog_data.string);
             break;
         case EMPTY_DATA:
             printf("done\n");

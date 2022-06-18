@@ -244,7 +244,7 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
 
-    log_print(INFO, "Listening on TCP port %d", port);
+    log_print(INFO, "Listening on %s port %d", udp_socket ? "UDP" : "TCP", port);
     if (addr_type == ADDR_IPV4) {
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;

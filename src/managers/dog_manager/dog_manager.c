@@ -243,11 +243,11 @@ static void get_cmd_list_handler(dog_response * dog_response, dog_request dog_re
         if(socks5_args.users[i].username[0] != '\0') {
             strcpy(dog_response->current_dog_data.string + string_offset, socks5_args.users[i].username);
             string_offset += strlen(socks5_args.users[i].username);
-            *(dog_response->current_dog_data.string + string_offset++) = ':';
+            *(dog_response->current_dog_data.string + string_offset++) = '\n';
             j++;
         }
     }
-    *(dog_response->current_dog_data.string + string_offset) = '\0';
+    *(dog_response->current_dog_data.string + --string_offset) = '\0';
 }
 
 static void get_cmd_hist_conn_handler(dog_response * dog_response, dog_request dog_request) {
