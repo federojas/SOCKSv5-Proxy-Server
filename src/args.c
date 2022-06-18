@@ -83,17 +83,13 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
     args->nusers = 0;
 
     args->socks_addr = DEFAULT_PROXY_ADDR;
+    args->socks_addr6 = DEFAULT_PROXY_ADDR6;
     args->socks_port = DEFAULT_SOCKS_PORT;
-    args->socks_on_both = true;
-    args->socks_ipv4 = true;
-    args->socks_ipv6 = true;
 
     args->mng_addr   = DEFAULT_MNG_ADDR;
+    args->mng_addr6   = DEFAULT_MNG_ADDR6;
     args->mng_port   = DEFAULT_MNG_PORT;
-    args->mng_on_both = true;
-    args->mng_ipv4 = true;
-    args->mng_ipv6 = true;
-    
+
     args->spoofing = true;
     args->authentication = false;
  
@@ -110,20 +106,16 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
                 usage(argv[0]);
                 break;
             case 'l':
-                args->socks_addr = optarg;
-                args->socks_on_both = false;
                 if(strchr(optarg, ':') != NULL)
-                    args->socks_ipv4 = false;
+                    args->socks_addr6 = optarg;
                 else
-                    args->socks_ipv6 = false;
+                    args->socks_addr = optarg;
                 break;
             case 'L':
-                args->mng_addr = optarg;
-                args->mng_on_both = false;
                 if(strchr(optarg, ':') != NULL)
-                    args->mng_ipv4 = false;
+                    args->mng_addr6 = optarg;
                 else
-                    args->mng_ipv6 = false;
+                    args->mng_addr = optarg;
                 break;
             case 'N':
                 args->spoofing = false;
