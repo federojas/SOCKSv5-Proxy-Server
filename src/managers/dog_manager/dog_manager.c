@@ -19,8 +19,6 @@
 
 #define BUFFER_SIZE 4096
 #define DEFAULT_PAGE_SIZE 200
-#define MAX_PAGE_SIZE 200
-#define MIN_PAGE_SIZE 1
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 typedef void (*resp_handler_fun) (dog_response *, dog_request);
 extern struct socks5_stats socks5_stats;
@@ -90,7 +88,7 @@ void manager_passive_accept(struct selector_key *key) {
 
     dog_manager.client_addr_len = sizeof(dog_manager.client_addr);
     dog_manager.response_len = 0;
-    dog_manager.page_size = DEFAULT_PAGE_SIZE;
+    dog_manager.page_size = dog_manager.page_size == 0 ? DEFAULT_PAGE_SIZE : dog_manager.page_size;
     memset(dog_manager.buffer_read, 0, BUFFER_SIZE);
     memset(dog_manager.buffer_write, 0, BUFFER_SIZE);
     memset(&dog_manager.dog_request, 0, sizeof(dog_request));
@@ -179,34 +177,33 @@ static bool check_alter_add_user(char * string) {
     if(*string == USER_PASS_DELIMETER)
         return false;
     char * temp = strchr(string, USER_PASS_DELIMETER);
-    if(temp == NULL || *(temp++) == '\0') 
+    if(temp == NULL || strlen(temp) > MAX_CRED_SIZE ||  *(temp++) == '\0' || strlen(temp) > MAX_CRED_SIZE) 
         return false;    
     return true;
 }
-// fico:
+
 static bool check_alter_string(struct dog_request dog_request) {
-    bool ret = true;
     switch(dog_request.current_dog_cmd) {
         case ALTER_CMD_ADD_USER:
-            if(check_alter_add_user(dog_request.current_dog_data.string))
-                ret = false;
+            if(!check_alter_add_user(dog_request.current_dog_data.string))
+                return false;
+            break;
         case ALTER_CMD_DEL_USER:
-            if(dog_request.current_dog_data.string == NULL )
-                ret = false;
+            if(dog_request.current_dog_data.string == NULL || strlen(dog_request.current_dog_data.string) > MAX_CRED_SIZE )
+                return false;
+            break;
     }
-    return ret;
+    return true;
 }
 
-
 static bool check_arguments(struct dog_request dog_request) {
-    bool ret = false;
+    bool ret = true;
     switch(cmd_to_req_data_type(dog_request.dog_type, dog_request.current_dog_cmd)) {
         case UINT_8_DATA:
             ret = check_alter_uint8(dog_request);
         break ;
         case STRING_DATA:
             ret = check_alter_string(dog_request);
-        break ;
         default:
         break ;
     }
@@ -214,6 +211,7 @@ static bool check_arguments(struct dog_request dog_request) {
 }
 
 static void setResponseHeader(struct dog_request dog_request, struct dog_response * dog_response) {
+    dog_response->dog_status_code = SC_OK;
     if(check_version(dog_request) == false) {
         dog_response->dog_status_code = SC_INVALID_VERSION;
     } else if(check_admin_token(dog_request) == false) {
@@ -225,7 +223,6 @@ static void setResponseHeader(struct dog_request dog_request, struct dog_respons
     } else if(check_arguments(dog_request) == false) {
         dog_response->dog_status_code = SC_INVALID_ARGUMENT;
     }
-    dog_response->dog_status_code = SC_OK;
     dog_response->dog_version = DOG_V1;
     dog_response->req_id = dog_request.req_id;
     dog_response->dog_type = dog_request.dog_type;
@@ -269,7 +266,7 @@ static void alter_cmd_add_user_handler(dog_response * dog_response, dog_request 
     password = strchr(username, USER_PASS_DELIMETER);
     *password++ = 0;
     if(!server_is_full()) {
-       if(!user_registerd(username, password)) {
+       if(!user_registerd(username)) {
             add_user(username, password);
             dog_response->dog_status_code = SC_OK;
        } else {
@@ -277,16 +274,19 @@ static void alter_cmd_add_user_handler(dog_response * dog_response, dog_request 
        }
     } else {
         dog_response->dog_status_code = SC_SERVER_IS_FULL;
-    }   
+    }  
+    fprintf(stderr,"-----------------------\n");
+    for(int i = 0; i < MAX_USERS; i++) {
+        fprintf(stderr,"usuario: %s %s \n ", socks5_args.users[i].username, socks5_args.users[i].password);
+
+    }
+    fprintf(stderr,"-----------------------");
 }
 
 static void alter_cmd_del_user_handler(dog_response * dog_response, dog_request dog_request) {
     char * username = dog_request.current_dog_data.string;
-    char * password;
-    password = strchr(username, USER_PASS_DELIMETER);
-    *password++ = 0;
-    if(user_registerd(username, password)) {
-        delete_user(username, password);
+    if(user_registerd(username)) {
+        delete_user(username);
         dog_response->dog_status_code = SC_OK;
     } else {
         dog_response->dog_status_code = SC_USER_NOT_FOUND;
@@ -302,5 +302,9 @@ static void alter_cmd_toggle_auth_handler(dog_response * dog_response, dog_reque
 }
 
 static void alter_cmd_user_page_size(dog_response * dog_response, dog_request dog_request) {
+    fprintf(stderr,"llegue al set_page");
+    fprintf(stderr, "el viejo: %d", dog_manager.page_size);
+    fprintf(stderr, "el que llega: %d", dog_request.current_dog_data.dog_uint8);
     dog_manager.page_size = dog_request.current_dog_data.dog_uint8;
+    fprintf(stderr, "el nuevo: %d", dog_manager.page_size);
 }

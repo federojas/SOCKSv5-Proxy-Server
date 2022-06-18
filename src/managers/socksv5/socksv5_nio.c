@@ -35,7 +35,7 @@ extern struct socks5_stats socks5_stats;
 
 // TODO: REVISAR SIEMPRE EL RESULTADO DE SELECTOR_SET_INTEREST
 
-/** maquina de estados general */
+/* maquina de estados general */
 enum socks_v5state {
     HELLO_READ,
     HELLO_WRITE,
@@ -55,10 +55,10 @@ enum socks_v5state {
 //------------------------ ST_STRUCTS--------------------------
 
 struct hello_st {
-    /** buffer utilizado para I/O */
+    
     buffer               *rb, *wb;
     struct hello_parser   parser;
-    /** el mÃ©todo de autenticaciÃ³n seleccionado */
+    
     uint8_t               method;
 };
 
@@ -111,7 +111,7 @@ static unsigned hello_read(struct selector_key *key);
 static unsigned request_connect (struct selector_key *key, struct request_st *d);
 static unsigned hello_write(struct selector_key *key);
 static void auth_init(const unsigned state, struct selector_key *key);
-//static uint8_t check_credentials(const struct auth_st *d);
+static uint8_t check_auth_credentials(const struct auth_st *d);
 static unsigned auth_process(struct auth_st *d);
 static unsigned auth_read(struct selector_key *key);
 static unsigned auth_write(struct selector_key *key);
@@ -128,7 +128,7 @@ static struct copy *fd_copy(struct selector_key *key);
 static fd_interest copy_compute_interests(fd_selector s, struct copy *d);
 //---------------------------------------------------------------
 
-/** definicionn de handlers para cada estado */
+/* definicion de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
     {
         .state            = HELLO_READ,
@@ -206,14 +206,12 @@ struct socks5 {
         struct auth_st            auth;
         struct copy               copy;
     } client;
-    /** estados para el origin_fd */
+
     union {
         struct connecting         conn;
         struct copy               copy;
     } orig;
 
-    /** buffers **/
-    //TODOS NUMEROS DIDACTICOS, HAY QUE LLEGAR A NUESTRO TAMAÑO DE BUFFER IDEAL Y JUSTIFICAR (CODA)
     uint8_t raw_buff_a[BUFFER_SIZE], raw_buff_b[BUFFER_SIZE];
     buffer read_buffer, write_buffer;
 
@@ -240,10 +238,6 @@ socks5_destroy_(struct socks5* s) {
     free(s);
 }
 
-/**
- * destruye un  `struct socks5', tiene en cuenta las referencias
- * y el pool de objetos.
- */
 static void
 socks5_destroy(struct socks5 *s) {
     if(s == NULL) {
@@ -273,24 +267,13 @@ socksv5_pool_destroy(void) {
 
         close(s->origin_fd);
         close(s->client_fd);
-
-        //TODO MIRAR ESTO (TODA LA FUNCION Y ESTOS COMENTADOS)
-        // free(s->read_buffer->data);
-        // free(s->read_buffer);
-        // free(s->write_buffer->data);
-        // free(s->write_buffer);
-        //free(s->current_command);
         free(s);
     }
     pool = NULL;
 }
 
-/** obtiene el struct (socks5 *) desde la llave de selecciÃ³n  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
-/* declaraciÃ³n forward de los handlers de selecciÃ³n de una conexiÃ³n
- * establecida entre un cliente y el proxy.
- */
 static void socksv5_read   (struct selector_key *key);
 static void socksv5_write  (struct selector_key *key);
 static void socksv5_block  (struct selector_key *key);
@@ -337,8 +320,7 @@ static struct socks5 *socks5_new(int client_fd) {
 
     return ret;
 }
-// Handlers top level de la conexiÃ³n pasiva.
-// son los que emiten los eventos a la maquina de estados.
+
 static void
 socksv5_done(struct selector_key* key);
 
@@ -393,12 +375,9 @@ socksv5_done(struct selector_key* key) {
         }
     }
 
-    // Cuando el estado sea DONE o ERROR siempre cae aca
-    // Elimino una conexion concurrente
     dec_current_connections();
 }
 
-/** Intenta aceptar la nueva conexiÃ³n entrante*/
 void
 socksv5_passive_accept(struct selector_key *key) {
     struct sockaddr_storage       client_addr;
@@ -427,10 +406,7 @@ socksv5_passive_accept(struct selector_key *key) {
     state = socks5_new(client);
 
     if(state == NULL) {
-        // sin un estado, nos es imposible manejaro.
-        // tal vez deberiamos apagar accept() hasta que detectemos
-        // que se liberÃ³ alguna conexiÃ³n.
-        error_message = "Socks5 Passive: new socks5 connection failed";
+        error_message = "Socks5 passive: new socks5 connection failed";
         goto fail;
     }
 
@@ -462,8 +438,8 @@ on_hello_method(struct hello_parser *p, const uint8_t method) {
         if(method == METHOD_AUTH_REQ) 
             *selected = method;
     } else {
-        if((method == METHOD_NO_AUTH_REQ) || (method == METHOD_AUTH_REQ)) 
-            *selected = method;
+        if((method == METHOD_NO_AUTH_REQ)) 
+            *selected = METHOD_NO_AUTH_REQ;
     }
 }
 
@@ -589,7 +565,7 @@ auth_init(const unsigned state, struct selector_key *key) {
 
 static uint8_t 
 check_auth_credentials(const struct auth_st *d) {
-    if(user_registerd(d->username->username, d->password->password) != 0) 
+    if(check_credentials(d->username->username, d->password->password) != 0) 
         return AUTH_SUCCESS;
     return AUTH_FAIL;
 }
@@ -697,7 +673,7 @@ request_resolv_blocking(void * data) {
 
     //TODO MANEJO ERRORES DE GETADDRINFO
     getaddrinfo(s->client.request.request.dest_addr.fqdn, buff, &hints, &s->origin_resolution);
-
+    s->origin_resolution_current = s->origin_resolution;
 
     selector_notify_block(key->s, key->fd);
 
@@ -711,16 +687,26 @@ request_resolv_done(struct selector_key *key) {
     struct request_st * d = &ATTACHMENT(key)->client.request;
     struct socks5 *s = ATTACHMENT(key);
     if(s->origin_resolution == 0) {
+        log_print(INFO,"Resolution failed");
         d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
         s->log_data.response_status = d->status;
+        if(-1 != request_marshall(d->wb, d->status,
+                                  d->request.dest_addr_type,
+                                  d->request.dest_addr,
+                                  d->request.dest_port)) {
+            selector_set_interest(key->s, *d->client_fd , OP_WRITE);
+            return REQUEST_WRITE;
+        } else {
+            return ERROR;
+        }
+        
     } else {
-        s->origin_domain = s->origin_resolution->ai_family;
-        s->origin_addr_len = s->origin_resolution->ai_addrlen;
+        log_print(INFO,"Resolution success");
+        s->origin_domain = s->origin_resolution_current->ai_family;
+        s->origin_addr_len = s->origin_resolution_current->ai_addrlen;
         memcpy(&s->origin_addr, 
-                s->origin_resolution->ai_addr,
-                s->origin_resolution->ai_addrlen);
-        freeaddrinfo(s->origin_resolution);
-        s->origin_resolution = 0;
+                s->origin_resolution_current->ai_addr,
+                s->origin_resolution_current->ai_addrlen);
     }
 
     return request_connect(key, d);
@@ -867,6 +853,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
     // Creo el socket
     *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0);
     if (*fd == -1) {
+        //log_print(FATAL,"Unable to create socket");
         error = true;
         goto finally;
     }
@@ -877,6 +864,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
     
     if (-1 == connect(*fd, (const struct sockaddr *)&ATTACHMENT (key)->origin_addr, ATTACHMENT (key)->origin_addr_len)) {
         if(errno == EINPROGRESS) {
+            log_print(INFO,"Connect in progress");
             selector_status st = selector_set_interest_key(key, OP_NOOP);
             if (SELECTOR_SUCCESS != st) {
                 error = true;
@@ -889,6 +877,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
             }
             ATTACHMENT(key)->references += 1;
         } else {
+            log_print(INFO,"Connect failed");
             status = errno_to_socks(errno);
             error = true;
             goto finally;
@@ -920,28 +909,46 @@ request_connecting(struct selector_key *key)
     int error;
     socklen_t len = sizeof(error);
     unsigned ret = REQUEST_CONNECTING;
-    struct socks5 *d = ATTACHMENT(key);
-
-    if (getsockopt(*d->orig.conn.origin_fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
-        selector_set_interest(key->s, *d->orig.conn.client_fd, OP_WRITE);   
+    struct socks5 *s = ATTACHMENT(key);
+    struct request_st * d = &ATTACHMENT(key)->client.request;
+    if (getsockopt(*s->orig.conn.origin_fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
+        selector_set_interest(key->s, *s->orig.conn.client_fd, OP_WRITE);   
         if(error == 0) {
-            inc_current_connections(); // conn with origin
-            d->client.request.status = SOCKS5_STATUS_SUCCEED;
+            log_print(INFO,"Connection success");
+            s->client.request.status = SOCKS5_STATUS_SUCCEED;
         } else {
-            d->client.request.status = errno_to_socks(error);
+            if(s->origin_resolution_current != NULL) {
+                s->origin_resolution_current = s->origin_resolution_current->ai_next;
+                if(s->origin_resolution_current != NULL) {
+                    log_print(INFO,"Connection retry");
+                    s->origin_domain = s->origin_resolution_current->ai_family;
+                    s->origin_addr_len = s->origin_resolution_current->ai_addrlen;
+                    memcpy(&s->origin_addr, 
+                            s->origin_resolution_current->ai_addr,
+                            s->origin_resolution_current->ai_addrlen);
+                  
+                    return request_connect(key,d);
+                }
+            }
+            log_print(LOG_ERROR,"Connection failed");
+            s->client.request.status = errno_to_socks(error);
             selector_set_interest_key(key, OP_NOOP);
-            ATTACHMENT(key)->log_data.response_status = d->client.request.status;
-            sign_in_print(&ATTACHMENT(key)->log_data);
+            ATTACHMENT(key)->log_data.response_status = s->client.request.status;
         }
+        freeaddrinfo(s->origin_resolution);
+        s->origin_resolution = 0;
 
-        if(-1 != request_marshall(d->orig.conn.wb, *d->orig.conn.status,d->client.request.request.dest_addr_type,d->client.request.request.dest_addr,d->client.request.request.dest_port)) {
-            selector_set_interest(key->s, *d->orig.conn.origin_fd, OP_READ);
+        if(-1 != request_marshall(s->orig.conn.wb, *s->orig.conn.status,
+                                  s->client.request.request.dest_addr_type,
+                                  s->client.request.request.dest_addr,
+                                  s->client.request.request.dest_port)) {
+            selector_set_interest(key->s, *s->orig.conn.origin_fd, OP_READ);
             ret = REQUEST_WRITE;
         }
         else {
             ret = ERROR;
         }
-        ATTACHMENT(key)->log_data.response_status = d->client.request.status;
+        ATTACHMENT(key)->log_data.response_status = s->client.request.status;
     } 
 
     return ret;
@@ -949,6 +956,7 @@ request_connecting(struct selector_key *key)
 
 static unsigned request_write(struct selector_key *key)
 {
+    log_print(INFO,"en request write");
     struct request_st *d = &ATTACHMENT(key)->client.request;
 
     buffer *b = d->wb;

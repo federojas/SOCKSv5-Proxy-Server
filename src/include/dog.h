@@ -9,11 +9,12 @@
 // in bytes
 #define MAX_UDP_SIZE 65507
 #define DOG_REQUEST_HEADER_SIZE 10
-#define DOG_RESPONSE_HEADER_SIZE 6
+#define DOG_RESPONSE_HEADER_SIZE 7
 #define DOG_REQUEST_ID_SIZE 2
 #define ERROR -1
 #define SUCCESS 0
-
+#define MAX_PAGE_SIZE 200
+#define MIN_PAGE_SIZE 1
 
 
 typedef enum dog_packet_type {

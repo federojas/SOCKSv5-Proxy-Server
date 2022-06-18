@@ -74,3 +74,6 @@ strace_out
 *.cppcheck
 
 PVS-Studio.log
+
+dog
+

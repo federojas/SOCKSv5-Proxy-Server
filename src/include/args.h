@@ -18,10 +18,14 @@ struct socks5_args {
     char           *socks_addr;
     unsigned short  socks_port;
     bool            socks_on_both;
+    bool            socks_ipv4;
+    bool            socks_ipv6;
 
     char *          mng_addr;
     unsigned short  mng_port;
     bool            mng_on_both;
+    bool            mng_ipv4;
+    bool            mng_ipv6;
     
     int             nusers;
     char *          version;

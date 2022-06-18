@@ -78,7 +78,7 @@ int dog_request_to_packet(char* output, dog_request * input, int* size) {
         return ERROR;
     }
 
-    uint32_t aux;
+    int aux;
     *size = get_packet_size(DOG_REQUEST,input->dog_type,input->current_dog_cmd,
                                         input->current_dog_data.string);
     char* buffer_p = output;
@@ -115,7 +115,7 @@ int dog_response_to_packet(char* output, dog_response * input, int* size) {
         return -1;
     }
 
-    uint32_t aux;
+    int aux;
     *size = get_packet_size(DOG_RESPONSE,input->dog_type, input->current_dog_cmd, 
                             input->current_dog_data.string);
     char* buffer_p = output;
@@ -125,6 +125,10 @@ int dog_response_to_packet(char* output, dog_response * input, int* size) {
     buffer_p += sizeof(uint8_t);
 
     aux = input->dog_status_code;
+    memcpy(buffer_p, &aux, sizeof(uint8_t));
+    buffer_p += sizeof(uint8_t);
+
+    aux = input->dog_type;
     memcpy(buffer_p, &aux, sizeof(uint8_t));
     buffer_p += sizeof(uint8_t);
 
@@ -149,10 +153,10 @@ static void read_dog_data(current_dog_data * output, dog_data_type dog_data_type
             output->dog_uint8 = *((uint8_t *) input);
             break;
         case UINT_16_DATA:
-            output->dog_uint16 = *((uint16_t *) input);
+            output->dog_uint16 = ntohs(*((uint16_t *) input));
             break;
         case UINT_32_DATA:
-            output->dog_uint32 = *((uint32_t *) input);
+            output->dog_uint32 = ntohl(*((uint32_t *) input));
             break;
         case STRING_DATA:
             strcpy(output->string, input);
@@ -164,7 +168,7 @@ static void read_dog_data(current_dog_data * output, dog_data_type dog_data_type
 }
 
 static void dog_data_to_buffer(current_dog_data input, dog_data_type dog_data_type, char * output) {
-    uint32_t aux;
+    int aux;
     switch (dog_data_type) {
         case UINT_8_DATA:
             aux = input.dog_uint8;

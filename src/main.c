@@ -18,6 +18,7 @@
 #include "netutils.h"
 #include "buffer.h"
 #include "statistics.h"
+#include "dog_manager.h"
 
 #define PORT 1080
 #define DEST_PORT 8888
@@ -52,7 +53,7 @@ int main(const int argc, char **argv) {
     int ret = 0;
     int current_sock_fd = -1;
     int proxy_socks5[2], proxy_socks5_size =0;
-    //int server_manager[2], server_manager_size = 0;
+    int server_manager[2], server_manager_size = 0;
     parse_args(argc, argv, &socks5_args);
     stats_init(&socks5_stats);
     
@@ -60,25 +61,31 @@ int main(const int argc, char **argv) {
     fd_selector selector      = NULL;
 
     //Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
-    current_sock_fd = build_passive_socket(ADDR_IPV4, false);
-    if (current_sock_fd < 0) {
-        log_print(DEBUG, "Unable to create passive IPv4 proxy");
-    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
-        perror("selector_fd_set_nio");
-        err_msg = "Error getting SOCKSv5 server IPv4 socket as non blocking";
-        goto finally;
-    } else {
-        proxy_socks5[proxy_socks5_size++] = current_sock_fd;
+
+    if(socks5_args.socks_ipv4) {
+        current_sock_fd = build_passive_socket(ADDR_IPV4, false);
+        if (current_sock_fd < 0) {
+            log_print(DEBUG, "Unable to create passive IPv4 proxy");
+        } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+            perror("selector_fd_set_nio");
+            err_msg = "Error getting SOCKSv5 server IPv4 socket as non blocking";
+            goto finally;
+        } else {
+            proxy_socks5[proxy_socks5_size++] = current_sock_fd;
+        }
     }
-    current_sock_fd = build_passive_socket(ADDR_IPV6, false);
-    if (current_sock_fd < 0) {
-        log_print(DEBUG, "Unable to create passive IPv6 proxy");
-    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
-        perror("selector_fd_set_nio");
-        err_msg = "Error getting SOCKSv5 server IPv6 socket as non blocking";
-        goto finally;
-    } else {
-        proxy_socks5[proxy_socks5_size++] = current_sock_fd;
+    
+    if(socks5_args.socks_ipv6) {
+        current_sock_fd = build_passive_socket(ADDR_IPV6, false);
+        if (current_sock_fd < 0) {
+            log_print(DEBUG, "Unable to create passive IPv6 proxy");
+        } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+            perror("selector_fd_set_nio");
+            err_msg = "Error getting SOCKSv5 server IPv6 socket as non blocking";
+            goto finally;
+        } else {
+            proxy_socks5[proxy_socks5_size++] = current_sock_fd;
+        }
     }
 
 
@@ -88,33 +95,37 @@ int main(const int argc, char **argv) {
 
 
     //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
-    /*
-    current_sock_fd = build_passive_socket(ADDR_IPV4, true);
-    if (current_sock_fd < 0) {
-        log_print(DEBUG, "Unable to create passive IPv4 proxy");
-    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
-        perror("selector_fd_set_nio");
-        err_msg = "Error getting server manager IPv4 socket as non blocking";
-        goto finally;
-    } else {
-        server_manager[server_manager_size++] = current_sock_fd;
+    
+    if(socks5_args.mng_ipv4) {
+        current_sock_fd = build_passive_socket(ADDR_IPV4, true);
+        if (current_sock_fd < 0) {
+            log_print(DEBUG, "Unable to create passive IPv4 proxy");
+        } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+            perror("selector_fd_set_nio");
+            err_msg = "Error getting server manager IPv4 socket as non blocking";
+            goto finally;
+        } else {
+            server_manager[server_manager_size++] = current_sock_fd;
+        }
     }
-    current_sock_fd = build_passive_socket(ADDR_IPV6, true);
-    if (current_sock_fd < 0) {
-        log_print(DEBUG, "Unable to create passive IPv6 proxy");
-    } else if (selector_fd_set_nio(current_sock_fd) == -1) {
-        perror("selector_fd_set_nio");
-        err_msg = "Error getting server manager IPv6 socket as non blocking";
-        goto finally;
-    } else {
-        server_manager[server_manager_size++] = current_sock_fd;
-    }
+    
+    if(socks5_args.mng_ipv6) {
+        current_sock_fd = build_passive_socket(ADDR_IPV6, true);
+        if (current_sock_fd < 0) {
+            log_print(DEBUG, "Unable to create passive IPv6 proxy");
+        } else if (selector_fd_set_nio(current_sock_fd) == -1) {
+            perror("selector_fd_set_nio");
+            err_msg = "Error getting server manager IPv6 socket as non blocking";
+            goto finally;
+        } else {
+            server_manager[server_manager_size++] = current_sock_fd;
+        }
 
-    if (server_manager_size == 0) {
-        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for server manager");
+        if (server_manager_size == 0) {
+            log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for server manager");
+        }
     }
-    */
-
+    
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
 
@@ -152,19 +163,19 @@ int main(const int argc, char **argv) {
     }
 
     // TODO: manager handler
-    // const struct fd_handler manager = {
-    //     .handle_read       = manager_passive_accept,
-    //     .handle_write      = NULL,
-    //     .handle_close      = NULL, // nada que liberar
-    // };
+    const struct fd_handler manager = {
+        .handle_read       = manager_passive_accept,
+        .handle_write      = NULL,
+        .handle_close      = NULL, // nada que liberar
+    };
 
-    // for (int i = 0; i < server_manager_size; i++) {
-    //     ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
-    //     if (ss != SELECTOR_SUCCESS) {
-    //         err_msg = "Error registering server manager passive fd";
-    //         goto finally;
-    //     }
-    // }
+    for (int i = 0; i < server_manager_size; i++) {
+        ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
+        if (ss != SELECTOR_SUCCESS) {
+            err_msg = "Error registering server manager passive fd";
+            goto finally;
+        }
+    }
 
     for(;!done;) {
         err_msg = NULL;
@@ -200,11 +211,11 @@ finally:
         close(proxy_socks5[i]);
     }
 
-    /*
+    
     for (int i = 0; i < server_manager_size; i++){
         close(server_manager[i]);
     }
-    */
+   
 
     socksv5_pool_destroy();
 
@@ -290,7 +301,7 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         return -1;
     }
     else {
-        log_print(INFO, "Waiting for new %s %s connection on %s socket with fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "SOCKSv5":"manager", udp_socket ? "UDP":"TCP", new_socket);
+        log_print(INFO, "Waiting for new %s %s connection on %s socket with fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "manager":"SOCKSv5", udp_socket ? "UDP":"TCP", new_socket);
     }
 
     return new_socket;
