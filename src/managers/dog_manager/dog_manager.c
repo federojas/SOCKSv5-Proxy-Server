@@ -187,11 +187,9 @@ static bool check_alter_string(struct dog_request dog_request) {
         case ALTER_CMD_ADD_USER:
             if(!check_alter_add_user(dog_request.current_dog_data.string))
                 return false;
-            break;
         case ALTER_CMD_DEL_USER:
             if(dog_request.current_dog_data.string == NULL || strlen(dog_request.current_dog_data.string) > MAX_CRED_SIZE )
                 return false;
-            break;
     }
     return true;
 }
@@ -230,10 +228,15 @@ static void setResponseHeader(struct dog_request dog_request, struct dog_respons
 }
 
 
-// TODO: terminar algunas funciones
-
 static void get_cmd_list_handler(dog_response * dog_response, dog_request dog_request) {
-    
+    int offset = (dog_request.current_dog_data.dog_uint8 - 1) * dog_manager.page_size;
+    fprintf(stderr, " offset %d", offset);
+    if(offset > socks5_args.nusers) {
+        strcpy(dog_response->current_dog_data.string, "Empty page");
+    }
+    // for(int i = offset, j = 0; i < MAX_USERS && j < dog_manager.page_size; i++, j++) {
+    //     dog_response->current_dog_data.string = socks5_args.users + i;
+    // }
 }
 
 static void get_cmd_hist_conn_handler(dog_response * dog_response, dog_request dog_request) {

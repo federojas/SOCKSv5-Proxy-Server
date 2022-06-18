@@ -1,8 +1,7 @@
-#include "dog.h"
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "dog.h"
 
 static int get_packet_size(dog_packet_type dog_packet_type, unsigned dog_type, unsigned dog_cmd, char* data);
 static void read_dog_data(current_dog_data * output, dog_data_type dog_data_type, char* input);

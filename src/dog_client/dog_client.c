@@ -59,7 +59,7 @@ dog_client_command dog_client_commands[] = {
     {.name = "getpage", .usage = "getpage", .builder = get_user_page_size_builder, .nparams = 0, .description="Returns the amount of users per page (max 200)", .on_success_message="Users per page" },
     {.name = "add", .usage = "add user:pass", .builder = alter_add_user_builder, .nparams = 1, .description="Command to add a user", .on_success_message="User added successfully" },
     {.name = "del", .usage = "del user:pass", .builder = alter_del_user_builder, .nparams = 1, .description="Command to delete a user", .on_success_message="User deleted successfully" },
-    {.name = "sniff", .usage = "sniff on / sniff off", .builder = alter_toggle_sniff_builder, .nparams = 1, .description="Command to toggle password disector over the server", .on_success_message="Disector toggled!" }, 
+    {.name = "sniff", .usage = "sniff on / sniff off", .builder = alter_toggle_sniff_builder, .nparams = 1, .description="Command to toggle POP3 credential sniffer over the server", .on_success_message="Disector toggled!" }, 
     {.name = "auth", .usage = "auth on / auth off", .builder = alter_toggle_auth_builder, .nparams = 1, .description="Command to toggle authentication over the server", .on_success_message="Authentication toggled!" },
     {.name = "setpage", .usage = "setpage <page_size> (n between 1 and 200)", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size", .on_success_message="Page size set successfully" },
 };
@@ -72,8 +72,7 @@ uint32_t token;
 
 int main(int argc, const char *argv[])
 {
-    if (argc != 3)
-    {
+    if (argc != 3) {
         fprintf(stderr, "Usage: dogc <dog_server_addr> <dog_server_port>\n");
         exit(EXIT_FAILURE);
     }
@@ -94,27 +93,23 @@ int main(int argc, const char *argv[])
     memset(&serv_addr6, 0, sizeof(serv_addr6));
 
     // TODO: usar fprintf o log en los siguientes casos?
-    if ((port = htons(atoi(argv[2]))) <= 0)
-    {
+    if ((port = htons(atoi(argv[2]))) <= 0) {
         fprintf(stderr, "Dog client: ERROR. Invalid port\n");
         exit(EXIT_FAILURE);
     }
 
-    if (inet_pton(AF_INET, argv[1], &serv_addr.sin_addr.s_addr) > 0)
-    {
+    if (inet_pton(AF_INET, argv[1], &serv_addr.sin_addr.s_addr) > 0) {
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_port = port;
         ip_type = ADDR_IPV4;
     }
-    else if (inet_pton(AF_INET6, argv[1], &serv_addr6.sin6_addr) > 0)
-    {
+    else if (inet_pton(AF_INET6, argv[1], &serv_addr6.sin6_addr) > 0) {
         serv_addr6.sin6_family = AF_INET6;
         serv_addr6.sin6_port = port;
         ip_type = ADDR_IPV6;
     }
 
-    if ((sockfd = socket(ip_type == ADDR_IPV4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0)) < 0)
-    {
+    if ((sockfd = socket(ip_type == ADDR_IPV4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0)) < 0) {
         fprintf(stderr, "Dog client: ERROR. Unable to create socket\n");
         exit(EXIT_FAILURE);
     }
@@ -122,8 +117,7 @@ int main(int argc, const char *argv[])
     struct timeval tv;
     tv.tv_sec = TIMEOUT_SEC;
     tv.tv_usec = 0;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
-    {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         fprintf(stderr, "Dog client: ERROR. Failed manager client setsockopt\n");
         close(sockfd);
         exit(EXIT_FAILURE);
@@ -139,39 +133,32 @@ int main(int argc, const char *argv[])
         fgets(user_input, USER_INPUT_SIZE, stdin);
         
         user_input[strcspn(user_input, "\r\n")] = 0;
-        command = strtok(user_input, " ");
+        parameter = strtok(user_input, " ");
 
-        if (command != NULL)
-        {
-            param = strtok(NULL,"");
-        }
-        else
-        {
+        *parameter++ = 0;
+        if (command != NULL) {
+            param = strtok(NULL," ");
+        } else {
             command = "null command";
         }
 
-        if (strcmp(command, "help") == 0)
-        {
+        if (strcmp(command, "help") == 0) {
             help();
             continue;
         }
 
         int i;
-        for (i = 0; i < MAX_COMMANDS; i++)
-        {
-            if (strcmp(command, dog_client_commands[i].name) == 0)
-            {
+        for (i = 0; i < MAX_COMMANDS; i++) {
+            if (strcmp(command, dog_client_commands[i].name) == 0) {
                 valid_param = dog_client_commands[i].builder(&dog_req, param);
                 break;
             }
         }
-        if (i == MAX_COMMANDS)
-        {
+        if (i == MAX_COMMANDS) {
             printf("Invalid command.\n");
             continue;
         }
-        if (valid_param == false)
-        {
+        if (valid_param == false) {
             printf("Invalid parameter\n");
             printf("Command: %s\t usage: %s\t description: %s\n", 
             dog_client_commands[i].name,
@@ -187,13 +174,11 @@ int main(int argc, const char *argv[])
         memset(buffer_in, 0, BUFFER_SIZE);
         memset(buffer_out, 0, BUFFER_SIZE);
 
-        if (dog_request_to_packet(buffer_out, &dog_req, &req_size) < 0)
-        {
+        if (dog_request_to_packet(buffer_out, &dog_req, &req_size) < 0) {
             fprintf(stderr,"Error building dog packet");
         }
 
-        if (ip_type == ADDR_IPV4)
-        {
+        if (ip_type == ADDR_IPV4) {
             sendto(sockfd, buffer_out, req_size,
                    MSG_CONFIRM, (const struct sockaddr *)&serv_addr,
                    sizeof(serv_addr));
@@ -201,9 +186,7 @@ int main(int argc, const char *argv[])
             resp_size = recvfrom(sockfd, (char *)buffer_in, BUFFER_SIZE,
                                  MSG_WAITALL, (struct sockaddr *)&serv_addr,
                                  &len);
-        }
-        else
-        {
+        } else {
             sendto(sockfd, buffer_out, req_size,
                    MSG_CONFIRM, (const struct sockaddr *)&serv_addr6,
                    sizeof(serv_addr6));
@@ -214,14 +197,12 @@ int main(int argc, const char *argv[])
         }
 
         // Timeout
-        if (resp_size < 0)
-        {
+        if (resp_size < 0) {
             printf("Destination unreachable.\n");
             continue;
         }
 
-        if (raw_packet_to_dog_response(buffer_in, &dog_res) < 0)
-        {
+        if (raw_packet_to_dog_response(buffer_in, &dog_res) < 0) {
             fprintf(stderr, "Error converting raw packet to response");
             continue;
         }
@@ -240,9 +221,10 @@ void help() {
     }
 }
 
-/* requires pagination */
 static bool get_list_builder(struct dog_request * dog_request, char * input) {
     header_builder(dog_request, TYPE_GET, GET_CMD_LIST);
+    if(*input == 0)
+        return false;
     return true;
 }
 
@@ -335,20 +317,17 @@ static void header_builder(struct dog_request * dog_request, dog_type type, unsi
 }
 
 void response_handler(struct dog_request dog_request, struct dog_response dog_response, char *message) {
-    if (dog_request.req_id != dog_response.req_id)
-    {
+    if (dog_request.req_id != dog_response.req_id) {
         printf("Error: fallo el req id.\n");
         return;
     }
     
-    if (dog_response.dog_status_code != SC_OK)
-    {
+    if (dog_response.dog_status_code != SC_OK) {
         printf("Error: %s.\n", error_report(dog_response.dog_status_code));
         return;
     }
     
-    switch (cmd_to_resp_data_type(dog_response.dog_type, dog_response.current_dog_cmd))
-    {
+    switch (cmd_to_resp_data_type(dog_response.dog_type, dog_response.current_dog_cmd)) {
         case UINT_8_DATA:
             printf("%s: %d", message, dog_response.current_dog_data.dog_uint8);
             break;
