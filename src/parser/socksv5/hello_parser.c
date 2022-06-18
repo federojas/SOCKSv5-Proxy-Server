@@ -101,7 +101,3 @@ char hello_parser_marshall(buffer *b, const uint8_t method){
     return 2;
 }
 
-extern void hello_parser_close(struct hello_parser *p){
-    /* no hay nada que liberar*/
-    //TODO: REVISAR
-}

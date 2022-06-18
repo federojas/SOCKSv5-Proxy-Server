@@ -154,7 +154,6 @@ int main(const int argc, char **argv) {
         }
     }
 
-    // TODO: manager handler
     const struct fd_handler manager = {
         .handle_read       = manager_passive_accept,
         .handle_write      = NULL,
@@ -282,7 +281,7 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         return -1;
     }
     else {
-        log_print(INFO, "Waiting for new %s %s connection on %s socket with fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "manager":"SOCKSv5", udp_socket ? "UDP":"TCP", new_socket);
+        log_print(INFO, "Waiting for new %s %s connection on %s socket with address %s and fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "manager":"SOCKSv5", udp_socket ? "UDP":"TCP", addr_type == ADDR_IPV4 ? string_addr:string_addr6,  new_socket);
     }
 
     return new_socket;

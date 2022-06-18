@@ -35,7 +35,7 @@ void add_bytes_transferred(uint32_t bytes){
     if(bytes + socks5_stats.bytes_transfered < UINT32_MAX){
         socks5_stats.bytes_transfered+=bytes;
     }
-    // TODO: Error
+    // TODO: Error 
 }
 
 void inc_usr_amount(void){

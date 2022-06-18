@@ -48,7 +48,6 @@ typedef struct dog_client_command {
     size_t nparams;
 } dog_client_command;
 
-// TODO: agregar las descripciones
 // Si se agrega un comando, cambiar el define de MAX_COMMANDS
 dog_client_command dog_client_commands[] = {
     {.name = "list", .usage = "list <page_number>", .builder = get_list_builder, .nparams = 1, .description="Returns a list of all users registered on the server", .on_success_message="Users" },
@@ -311,7 +310,6 @@ static bool alter_user_page_size_builder(struct dog_request * dog_request, char 
     header_builder(dog_request, TYPE_ALTER, ALTER_CMD_USER_PAGE_SIZE);
     int arg = atoi(input);
     if(arg >= MIN_PAGE_SIZE && arg <= MAX_PAGE_SIZE) {
-        // TODO: usamos memcpy ya que atoi devuelve int en lugar de uint8? por overflow?
         dog_request->current_dog_data.dog_uint8 = arg;
         return true;
     }

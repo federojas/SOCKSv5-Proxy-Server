@@ -40,6 +40,4 @@ char *hello_parser_error_report(enum hello_parser_state state);
 
 char hello_parser_marshall(buffer *b, const uint8_t method);
 
-extern void hello_parser_close(struct hello_parser *p); 
-
 #endif

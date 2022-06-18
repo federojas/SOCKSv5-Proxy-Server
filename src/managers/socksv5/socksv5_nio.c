@@ -105,7 +105,6 @@ struct connecting {
 
 //--------------------FUNCTION DEFINITIONS------------------
 static void hello_read_init(const unsigned state, struct selector_key *key);
-static void hello_read_close(const unsigned state, struct selector_key *key);
 static unsigned hello_process(const struct hello_st* d);
 static unsigned hello_read(struct selector_key *key);
 static unsigned request_connect (struct selector_key *key, struct request_st *d);
@@ -133,7 +132,6 @@ static const struct state_definition client_statbl[] = {
     {
         .state            = HELLO_READ,
         .on_arrival       = hello_read_init,
-        .on_departure     = hello_read_close,
         .on_read_ready    = hello_read,
     },
     {
@@ -501,13 +499,6 @@ hello_process(const struct hello_st* d) {
     return ret;
 }
 
-static void 
-hello_read_close(const unsigned state, struct selector_key *key) {
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-
-    hello_parser_close(&d->parser);
-}
-
 static unsigned 
 hello_write(struct selector_key *key)
 {
@@ -848,7 +839,7 @@ request_connect (struct selector_key *key, struct request_st *d) {
     int *fd                             = d->origin_fd;
 
     //TODO: QUE HACER SI FD ES UN VALOR NO DESEADO
-    //TODO LOG ERROR
+    //TODO: LOG ERROR
 
     // Creo el socket
     *fd = socket(ATTACHMENT (key) ->origin_domain, SOCK_STREAM, 0);
