@@ -5,15 +5,15 @@ En el directorio principal se puede encontrar el Makefile principal y el informe
 
 En el directorio src se encuntran los siguientes subdirectorios:
 
-* **buffer** - Contiene el codigo fuente para el manejo de un buffer
-* **dog-client** - Contiene el codigo fuente del cliente administrador DOG del servidor proxy
-* **include** - Contiene todas las definiciones de librerias utilizadas en el proyecto
-* **logger** - Contiene el codigo fuente para el manejo de los logs
-* **managers** - Contiene el codigo fuente para el handling de conexiones al servidor SOCKSv5 y al administrador bajo los subdirectorios socksv5 y dog_manager respectivamente. En el directorio dog_manager se encuentra el codigo fuente del handler en dog_manager.c y el codigo de utilidades para dicho handler en dog.c
+* **buffer** - Contiene el codigo fuente para el manejo de un buffer.
+* **dog-client** - Contiene el codigo fuente del cliente administrador DOG del servidor proxy.
+* **include** - Contiene todas las definiciones de librerias utilizadas en el proyecto.
+* **logger** - Contiene el codigo fuente para el manejo de los logs.
+* **managers** - Contiene el codigo fuente para el handling de conexiones al servidor SOCKSv5 y al administrador bajo los subdirectorios socksv5 y dog_manager respectivamente. En el directorio dog_manager se encuentra el codigo fuente del handler en dog_manager.c y el codigo de utilidades para dicho handler en dog.c.
 * **parser** - Contiene subdirectorios para los dos protocolos que se requrieron parsear: POP3 y SOCKSv5. En el subdirectorio POP3 se encuentra unicamente un archivo con el parsing de la negociación inicial de usuario y contraseña. En el subdirectorio socksv5 se encuentran los archivos para parsear los tres paquetes posibles: hello, authentication y request.
 * **selector** - Contiene el codigo fuente para el manejo de los fd.
 * **statistics** - Contiene el codigo fuente para el manejo de estadisticas volatiles del servidor.
-* **stm** - Contiene el codigo fuente de la máquina de estados
+* **stm** - Contiene el codigo fuente de la máquina de estados.
 * **utils** - Contiene el codigo fuente de librerias de utilities: manejo de usuarios y utilidades para manejo de direcciones.
 
 En el directorio src se encuntran a su vez los archivos args.c, encargado de parsear y resolver los argumentos al ejecutar el servidor, y main.c, encargado de iniciar los sockets pasivos y demás configuraciones iniciales del servidor.
