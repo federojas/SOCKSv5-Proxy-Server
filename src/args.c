@@ -83,10 +83,14 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
     args->socks_addr = DEFAULT_PROXY_ADDR;
     args->socks_port = DEFAULT_SOCKS_PORT;
     args->socks_on_both = true;
+    args->socks_ipv4 = true;
+    args->socks_ipv6 = true;
 
     args->mng_addr   = DEFAULT_MNG_ADDR;
     args->mng_port   = DEFAULT_MNG_PORT;
     args->mng_on_both = true;
+    args->mng_ipv4 = true;
+    args->mng_ipv6 = true;
     
     args->spoofing = true;
     args->authentication = false;
@@ -106,10 +110,18 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
             case 'l':
                 args->socks_addr = optarg;
                 args->socks_on_both = false;
+                if(strchr(optarg, ':') != NULL)
+                    args->socks_ipv4 = false;
+                else
+                    args->socks_ipv6 = false;
                 break;
             case 'L':
                 args->mng_addr = optarg;
                 args->mng_on_both = false;
+                if(strchr(optarg, ':') != NULL)
+                    args->mng_ipv4 = false;
+                else
+                    args->mng_ipv6 = false;
                 break;
             case 'N':
                 args->spoofing = false;
