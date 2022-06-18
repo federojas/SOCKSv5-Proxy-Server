@@ -231,7 +231,8 @@ static void setResponseHeader(struct dog_request dog_request, struct dog_respons
 static void get_cmd_list_handler(dog_response * dog_response, dog_request dog_request) {
     int offset = (dog_request.current_dog_data.dog_uint8 - 1) * dog_manager.page_size;
     if(offset > socks5_args.nusers) {
-        dog_response->current_dog_data.string[0] = '\0';
+        dog_response->current_dog_data.string[0] = 0;
+        return ;
     }
     int aux_offset = offset;
     int string_offset = 0;
