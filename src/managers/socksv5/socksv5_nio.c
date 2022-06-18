@@ -947,7 +947,6 @@ request_connecting(struct selector_key *key)
 
 static unsigned request_write(struct selector_key *key)
 {
-    log_print(INFO,"en request write");
     struct request_st *d = &ATTACHMENT(key)->client.request;
 
     buffer *b = d->wb;

@@ -141,13 +141,13 @@ parse_args(const int argc, char **argv, struct socks5_args *args) {
                 exit(0);
                 break;
             default:
-                fprintf(stderr, "unknown argument %d.\n", c);
+                fprintf(stderr, "Unknown argument %d.\n", c);
                 exit(1);
         }
 
     }
     if (optind < argc) {
-        fprintf(stderr, "argument not accepted: ");
+        fprintf(stderr, "Argument not accepted: ");
         while (optind < argc) {
             fprintf(stderr, "%s ", argv[optind++]);
         }
