@@ -67,7 +67,7 @@ typedef enum dog_status_code {
 } dog_status_code;
 
 typedef enum dog_data_type {
-    NO_DATA,
+    EMPTY_DATA,
     UINT_8_DATA,
     UINT_16_DATA,
     UINT_32_DATA,

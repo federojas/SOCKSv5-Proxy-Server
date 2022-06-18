@@ -230,13 +230,24 @@ static void setResponseHeader(struct dog_request dog_request, struct dog_respons
 
 static void get_cmd_list_handler(dog_response * dog_response, dog_request dog_request) {
     int offset = (dog_request.current_dog_data.dog_uint8 - 1) * dog_manager.page_size;
-    fprintf(stderr, " offset %d", offset);
     if(offset > socks5_args.nusers) {
-        strcpy(dog_response->current_dog_data.string, "Empty page");
+        dog_response->current_dog_data.string[0] = '\0';
     }
-    // for(int i = offset, j = 0; i < MAX_USERS && j < dog_manager.page_size; i++, j++) {
-    //     dog_response->current_dog_data.string = socks5_args.users + i;
-    // }
+    int aux_offset = offset;
+    int string_offset = 0;
+    for(int i = 0; i < aux_offset; i ++) {
+        if(socks5_args.users[i].username[0] == '\0')
+            offset++;
+    }
+    for(int i = offset, j = 0; i < MAX_USERS && j < dog_manager.page_size; i++) {
+        if(socks5_args.users[i].username[0] != '\0') {
+            strcpy(dog_response->current_dog_data.string + string_offset, socks5_args.users[i].username);
+            string_offset += strlen(socks5_args.users[i].username);
+            *(dog_response->current_dog_data.string + string_offset++) = ':';
+            j++;
+        }
+    }
+    *(dog_response->current_dog_data.string + string_offset) = '\0';
 }
 
 static void get_cmd_hist_conn_handler(dog_response * dog_response, dog_request dog_request) {
@@ -278,12 +289,6 @@ static void alter_cmd_add_user_handler(dog_response * dog_response, dog_request 
     } else {
         dog_response->dog_status_code = SC_SERVER_IS_FULL;
     }  
-    fprintf(stderr,"-----------------------\n");
-    for(int i = 0; i < MAX_USERS; i++) {
-        fprintf(stderr,"usuario: %s %s \n ", socks5_args.users[i].username, socks5_args.users[i].password);
-
-    }
-    fprintf(stderr,"-----------------------");
 }
 
 static void alter_cmd_del_user_handler(dog_response * dog_response, dog_request dog_request) {
@@ -305,9 +310,5 @@ static void alter_cmd_toggle_auth_handler(dog_response * dog_response, dog_reque
 }
 
 static void alter_cmd_user_page_size(dog_response * dog_response, dog_request dog_request) {
-    fprintf(stderr,"llegue al set_page");
-    fprintf(stderr, "el viejo: %d", dog_manager.page_size);
-    fprintf(stderr, "el que llega: %d", dog_request.current_dog_data.dog_uint8);
     dog_manager.page_size = dog_request.current_dog_data.dog_uint8;
-    fprintf(stderr, "el nuevo: %d", dog_manager.page_size);
 }

@@ -9,6 +9,7 @@
 #include "args.h"
 #include "dog.h"
 #include "netutils.h"
+#include "logger.h"
 #include <sys/time.h>
 #include <time.h>
 
@@ -73,7 +74,7 @@ uint32_t token;
 int main(int argc, const char *argv[])
 {
     if (argc != 3) {
-        fprintf(stderr, "Usage: dogc <dog_server_addr> <dog_server_port>\n");
+        fprintf(stderr, "Usage: ./dog <dog_server_addr> <dog_server_port>\n");
         exit(EXIT_FAILURE);
     }
 
@@ -92,7 +93,6 @@ int main(int argc, const char *argv[])
     memset(&serv_addr, 0, sizeof(serv_addr));
     memset(&serv_addr6, 0, sizeof(serv_addr6));
 
-    // TODO: usar fprintf o log en los siguientes casos?
     if ((port = htons(atoi(argv[2]))) <= 0) {
         fprintf(stderr, "Dog client: ERROR. Invalid port\n");
         exit(EXIT_FAILURE);
@@ -132,14 +132,18 @@ int main(int argc, const char *argv[])
         memset(user_input, 0, USER_INPUT_SIZE);
         fgets(user_input, USER_INPUT_SIZE, stdin);
         
-        user_input[strcspn(user_input, "\r\n")] = 0;
-        command = strtok(user_input, " ");
-
-        if (command != NULL) {
-            param = strtok(NULL," ");
-        } else {
-            command = "null command";
+        if(user_input == NULL) {
+            printf("No command specified.\n");
+            continue ;
         }
+
+        user_input[strcspn(user_input, "\r\n")] = 0;
+        command = user_input;
+        param = strchr(user_input, ' ');
+        if (param != NULL) {
+            *param++ = 0;
+        }
+
 
         if (strcmp(command, "help") == 0) {
             help();
@@ -149,7 +153,12 @@ int main(int argc, const char *argv[])
         int i;
         for (i = 0; i < MAX_COMMANDS; i++) {
             if (strcmp(command, dog_client_commands[i].name) == 0) {
-                valid_param = dog_client_commands[i].builder(&dog_req, param);
+                if((dog_client_commands[i].nparams != 0 && param == NULL) 
+                || (dog_client_commands[i].nparams == 0 && param != NULL)) {
+                    valid_param = false;        
+                } else {
+                    valid_param = dog_client_commands[i].builder(&dog_req, param);
+                }
                 break;
             }
         }
@@ -222,8 +231,7 @@ void help() {
 
 static bool get_list_builder(struct dog_request * dog_request, char * input) {
     header_builder(dog_request, TYPE_GET, GET_CMD_LIST);
-    if(*input == 0)
-        return false;
+    dog_request->current_dog_data.dog_uint8 = atoi(input);
     return true;
 }
 
@@ -339,7 +347,7 @@ void response_handler(struct dog_request dog_request, struct dog_response dog_re
         case STRING_DATA:
             printf("%s: %s", message, dog_response.current_dog_data.string);
             break;
-        case NO_DATA:
+        case EMPTY_DATA:
             printf("done\n");
             break;
         default:

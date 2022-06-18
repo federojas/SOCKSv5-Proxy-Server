@@ -160,7 +160,7 @@ static void read_dog_data(current_dog_data * output, dog_data_type dog_data_type
         case STRING_DATA:
             strcpy(output->string, input);
             break;
-        case NO_DATA:
+        case EMPTY_DATA:
         default:
             output->string[0] = 0;
     }
@@ -184,7 +184,7 @@ static void dog_data_to_buffer(current_dog_data input, dog_data_type dog_data_ty
         case STRING_DATA:
             strcpy(output, input.string);
             break;
-        case NO_DATA:
+        case EMPTY_DATA:
         default:
             break;
     }
@@ -222,13 +222,14 @@ dog_data_type cmd_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
         case TYPE_GET:
             switch(dog_cmd) {
                 case GET_CMD_LIST:
+                    return UINT_8_DATA;
                 case GET_CMD_HIST_CONN:
                 case GET_CMD_CONC_CONN:
                 case GET_CMD_BYTES_TRANSF:
                 case GET_CMD_IS_SNIFFING_ENABLED:
                 case GET_CMD_IS_AUTH_ENABLED:
                 default:
-                    return NO_DATA;
+                    return EMPTY_DATA;
             }
         case TYPE_ALTER:
             switch(dog_cmd) {
@@ -240,10 +241,10 @@ dog_data_type cmd_to_req_data_type(unsigned dog_type, unsigned dog_cmd) {
                 case ALTER_CMD_USER_PAGE_SIZE:
                     return UINT_8_DATA;
                 default:
-                    return NO_DATA;
+                    return EMPTY_DATA;
             }
         default:
-            return NO_DATA;
+            return EMPTY_DATA;
     }
 }
 
@@ -263,7 +264,7 @@ dog_data_type cmd_to_resp_data_type(unsigned dog_type, unsigned dog_cmd){
                 case GET_CMD_USER_PAGE_SIZE:
                     return UINT_8_DATA;
                 default:
-                    return NO_DATA;
+                    return EMPTY_DATA;
             }
         case TYPE_ALTER:
             switch(dog_cmd) {
@@ -272,10 +273,10 @@ dog_data_type cmd_to_resp_data_type(unsigned dog_type, unsigned dog_cmd){
                 case ALTER_CMD_TOGGLE_SNIFFING:
                 case ALTER_CMD_TOGGLE_AUTH:
                 default:
-                    return NO_DATA;
+                    return EMPTY_DATA;
             }
         default:
-            return NO_DATA;
+            return EMPTY_DATA;
     }
 }
 

@@ -27,10 +27,8 @@ bool server_is_full() {
 
 void add_user(char * user, char * pass) {
     bool found_available_space = false;
-    fprintf(stderr, "voy a agregar al usuario %s %s\n", user, pass);
     for(int i = 0; i < MAX_USERS && found_available_space == false; i++) {
         if(socks5_args.users[i].username == NULL ||socks5_args.users[i].username[0] == '\0' ) {
-            fprintf(stderr, "agregue un usuario\n");
             char * usern = socks5_args.users[i].username;
             strcpy(usern, user);
             char * passw = socks5_args.users[i].password;
