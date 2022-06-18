@@ -133,9 +133,8 @@ int main(int argc, const char *argv[])
         fgets(user_input, USER_INPUT_SIZE, stdin);
         
         user_input[strcspn(user_input, "\r\n")] = 0;
-        parameter = strtok(user_input, " ");
+        command = strtok(user_input, " ");
 
-        *parameter++ = 0;
         if (command != NULL) {
             param = strtok(NULL," ");
         } else {
