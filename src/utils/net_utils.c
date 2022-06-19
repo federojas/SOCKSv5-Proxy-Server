@@ -1,22 +1,21 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-#include <stdbool.h>
 #include <errno.h>
-#include <string.h>
-#include <stdio.h>
 #include <netdb.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include "netutils.h"
 
-#define N(x) (sizeof(x)/sizeof((x)[0]))
+#define N(x) (sizeof(x) / sizeof((x)[0]))
 
-extern const char *
-sockaddr_to_human(char *buff, const size_t buffsize,
-                  const struct sockaddr_storage *addr) {
-    if(addr == 0) {
+extern const char *sockaddr_to_human(char *buff, const size_t buffsize,
+                                     const struct sockaddr_storage *addr) {
+    if (addr == 0) {
         strncpy(buff, "null", buffsize);
         return buff;
     }
@@ -24,20 +23,20 @@ sockaddr_to_human(char *buff, const size_t buffsize,
     void *p = 0x00;
     bool handled = false;
 
-    switch(addr->ss_family) {
-        case AF_INET:
-            p    = &((struct sockaddr_in *) addr)->sin_addr;
-            port =  ((struct sockaddr_in *) addr)->sin_port;
-            handled = true;
-            break;
-        case AF_INET6:
-            p    = &((struct sockaddr_in6 *) addr)->sin6_addr;
-            port =  ((struct sockaddr_in6 *) addr)->sin6_port;
-            handled = true;
-            break;
+    switch (addr->ss_family) {
+    case AF_INET:
+        p = &((struct sockaddr_in *)addr)->sin_addr;
+        port = ((struct sockaddr_in *)addr)->sin_port;
+        handled = true;
+        break;
+    case AF_INET6:
+        p = &((struct sockaddr_in6 *)addr)->sin6_addr;
+        port = ((struct sockaddr_in6 *)addr)->sin6_port;
+        handled = true;
+        break;
     }
-    if(handled) {
-        if (inet_ntop(addr->ss_family, p,  buff, buffsize) == 0) {
+    if (handled) {
+        if (inet_ntop(addr->ss_family, p, buff, buffsize) == 0) {
             strncpy(buff, "unknown ip", buffsize);
             buff[buffsize - 1] = 0;
         }
@@ -49,7 +48,7 @@ sockaddr_to_human(char *buff, const size_t buffsize,
     buff[buffsize - 1] = 0;
     const size_t len = strlen(buff);
 
-    if(handled) {
+    if (handled) {
         snprintf(buff + len, buffsize - len, "%d", ntohs(port));
     }
     buff[buffsize - 1] = 0;

@@ -1,24 +1,24 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
+#include "args.h"
+#include "buffer.h"
+#include "dog_manager.h"
+#include "logger.h"
+#include "netutils.h"
+#include "selector.h"
+#include "socksv5_nio.h"
+#include "statistics.h"
 #include <errno.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/types.h>   // socket
-#include <sys/socket.h>  // socket
+#include <limits.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include "selector.h"
-#include "logger.h"
-#include "socksv5_nio.h"
-#include "args.h"
-#include "netutils.h"
-#include "buffer.h"
-#include "statistics.h"
-#include "dog_manager.h"
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h> // socket
+#include <sys/types.h>  // socket
+#include <unistd.h>
 
 #define PORT 1080
 #define DEST_PORT 8888
@@ -31,17 +31,15 @@
 #define DEFAULT_MANAGER_IPV4 "127.0.0.1"
 #define DEFAULT_MANAGER_IPV6 "::1"
 
-
 static bool done = false;
 extern struct socks5_args socks5_args;
 extern struct socks5_stats socks5_stats;
 
 static int build_passive_socket(addr_type addr_type, bool udp_socket);
 
-    // TODO: Clean up function
-static void
-sigterm_handler(const int signal) {
-    printf("signal %d, cleaning up and exiting\n",signal);
+// TODO: Clean up function
+static void sigterm_handler(const int signal) {
+    printf("signal %d, cleaning up and exiting\n", signal);
     done = true;
 }
 
@@ -49,18 +47,18 @@ int main(const int argc, char **argv) {
 
     close(STDIN_FILENO);
 
-    const char* err_msg = NULL;
+    const char *err_msg = NULL;
     int ret = 0;
     int current_sock_fd = -1;
-    int proxy_socks5[2], proxy_socks5_size =0;
+    int proxy_socks5[2], proxy_socks5_size = 0;
     int server_manager[2], server_manager_size = 0;
     parse_args(argc, argv, &socks5_args);
     stats_init(&socks5_stats);
-    
-    selector_status   ss      = SELECTOR_SUCCESS;
-    fd_selector selector      = NULL;
 
-    //Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
+    selector_status ss = SELECTOR_SUCCESS;
+    fd_selector selector = NULL;
+
+    // Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
 
     current_sock_fd = build_passive_socket(ADDR_IPV4, false);
     if (current_sock_fd < 0) {
@@ -72,7 +70,7 @@ int main(const int argc, char **argv) {
     } else {
         proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
-    
+
     current_sock_fd = build_passive_socket(ADDR_IPV6, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
@@ -84,14 +82,14 @@ int main(const int argc, char **argv) {
         proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
 
-
     if (proxy_socks5_size == 0) {
-        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for SOCKSv5 server");
+        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive "
+                         "socket for SOCKSv5 server");
     }
 
+    // Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor
+    // proxy SOCKSv5
 
-    //Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor proxy SOCKSv5
-    
     current_sock_fd = build_passive_socket(ADDR_IPV4, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
@@ -102,7 +100,7 @@ int main(const int argc, char **argv) {
     } else {
         server_manager[server_manager_size++] = current_sock_fd;
     }
-    
+
     current_sock_fd = build_passive_socket(ADDR_IPV6, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
@@ -115,39 +113,42 @@ int main(const int argc, char **argv) {
     }
 
     if (server_manager_size == 0) {
-        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive socket for server manager");
+        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive "
+                         "socket for server manager");
     }
-    
+
     signal(SIGTERM, sigterm_handler);
-    signal(SIGINT,  sigterm_handler);
+    signal(SIGINT, sigterm_handler);
 
     const struct selector_init conf = {
         .signal = SIGALRM,
-        .select_timeout = {
-            .tv_sec  = 10,
-            .tv_nsec = 0,
-        },
+        .select_timeout =
+            {
+                .tv_sec = 10,
+                .tv_nsec = 0,
+            },
     };
 
-    if(0 != selector_init(&conf)) {
+    if (0 != selector_init(&conf)) {
         err_msg = "Unable to initialize selector";
         goto finally;
     }
 
     selector = selector_new(SELECTOR_SIZE);
-    if(selector == NULL) {
+    if (selector == NULL) {
         err_msg = "Unable to create selector";
         goto finally;
     }
 
     const struct fd_handler socksv5 = {
-        .handle_read       = socksv5_passive_accept,
-        .handle_write      = NULL,
-        .handle_close      = NULL, // nada que liberar
+        .handle_read = socksv5_passive_accept,
+        .handle_write = NULL,
+        .handle_close = NULL, // nada que liberar
     };
 
     for (int i = 0; i < proxy_socks5_size; i++) {
-        ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ, NULL);
+        ss = selector_register(selector, proxy_socks5[i], &socksv5, OP_READ,
+                               NULL);
         if (ss != SELECTOR_SUCCESS) {
             err_msg = "Error registering SOCKSv5 server passive fd";
             goto finally;
@@ -155,58 +156,54 @@ int main(const int argc, char **argv) {
     }
 
     const struct fd_handler manager = {
-        .handle_read       = manager_passive_accept,
-        .handle_write      = NULL,
-        .handle_close      = NULL, // nada que liberar
+        .handle_read = manager_passive_accept,
+        .handle_write = NULL,
+        .handle_close = NULL, // nada que liberar
     };
 
     for (int i = 0; i < server_manager_size; i++) {
-        ss = selector_register(selector, server_manager[i], &manager, OP_READ, NULL);
+        ss = selector_register(selector, server_manager[i], &manager, OP_READ,
+                               NULL);
         if (ss != SELECTOR_SUCCESS) {
             err_msg = "Error registering server manager passive fd";
             goto finally;
         }
     }
 
-    for(;!done;) {
+    for (; !done;) {
         err_msg = NULL;
         ss = selector_select(selector);
-        if(ss != SELECTOR_SUCCESS) {
-            log_print(LOG_ERROR, "%s",selector_error(ss));
+        if (ss != SELECTOR_SUCCESS) {
+            log_print(LOG_ERROR, "%s", selector_error(ss));
             err_msg = "Error serving";
             goto finally;
         }
     }
-    if(err_msg == NULL) {
+    if (err_msg == NULL) {
         err_msg = "No error, closing";
     }
 
-    
 finally:
-    if(ss != SELECTOR_SUCCESS) {
+    if (ss != SELECTOR_SUCCESS) {
         fprintf(stderr, "%s: %s\n", err_msg,
-                                  ss == SELECTOR_IO
-                                      ? strerror(errno)
-                                      : selector_error(ss));
+                ss == SELECTOR_IO ? strerror(errno) : selector_error(ss));
         ret = 2;
-    } else if(err_msg) {
+    } else if (err_msg) {
         perror(err_msg);
         ret = 1;
     }
-    if(selector != NULL) {
+    if (selector != NULL) {
         selector_destroy(selector);
     }
     selector_close();
 
-    for (int i = 0; i < proxy_socks5_size; i++){
+    for (int i = 0; i < proxy_socks5_size; i++) {
         close(proxy_socks5[i]);
     }
 
-    
-    for (int i = 0; i < server_manager_size; i++){
+    for (int i = 0; i < server_manager_size; i++) {
         close(server_manager[i]);
     }
-   
 
     socksv5_pool_destroy();
 
@@ -225,31 +222,38 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
     int protocol = udp_socket ? IPPROTO_UDP : IPPROTO_TCP;
 
     int port = udp_socket ? socks5_args.mng_port : socks5_args.socks_port;
-    char * string_addr = udp_socket ? socks5_args.mng_addr : socks5_args.socks_addr;
-    char * string_addr6 = udp_socket ? socks5_args.mng_addr6 : socks5_args.socks_addr6;
+    char *string_addr =
+        udp_socket ? socks5_args.mng_addr : socks5_args.socks_addr;
+    char *string_addr6 =
+        udp_socket ? socks5_args.mng_addr6 : socks5_args.socks_addr6;
 
     new_socket = socket(network_flag, socket_type, protocol);
-    if(new_socket < 0) {
+    if (new_socket < 0) {
         log_print(LOG_ERROR, "Unable to create passive socket");
         return -1;
     }
 
-    if(!udp_socket && setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
+    if (!udp_socket && setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR,
+                                  &(int){1}, sizeof(int)) < 0) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
 
-    // Sockets ipv6 no acepta ipv4 
-    if (addr_type == ADDR_IPV6 && setsockopt(new_socket, IPPROTO_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof(int)) < 0) {
+    // Sockets ipv6 no acepta ipv4
+    if (addr_type == ADDR_IPV6 &&
+        setsockopt(new_socket, IPPROTO_IPV6, IPV6_V6ONLY, &(int){1},
+                   sizeof(int)) < 0) {
         log_print(LOG_ERROR, "Unable to set socket options");
     }
 
-    log_print(INFO, "Listening on %s port %d", udp_socket ? "UDP" : "TCP", port);
+    log_print(INFO, "Listening on %s port %d", udp_socket ? "UDP" : "TCP",
+              port);
     if (addr_type == ADDR_IPV4) {
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_port =  htons(port);
+        addr.sin_port = htons(port);
         if (inet_pton(AF_INET, string_addr, &addr.sin_addr.s_addr) <= 0) {
-            log_print(DEBUG, "Address %s does not translate to IPv4", string_addr);
+            log_print(DEBUG, "Address %s does not translate to IPv4",
+                      string_addr);
             close(new_socket);
             return -1;
         }
@@ -263,7 +267,8 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         addr_6.sin6_family = AF_INET6;
         addr_6.sin6_port = htons(port);
         if (inet_pton(AF_INET6, string_addr6, &addr_6.sin6_addr) <= 0) {
-            log_print(DEBUG, "Address %s does not translate to IPv6", string_addr6);
+            log_print(DEBUG, "Address %s does not translate to IPv6",
+                      string_addr6);
             close(new_socket);
             return -1;
         }
@@ -279,9 +284,14 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
         log_print(LOG_ERROR, "Unable to listen socket");
         close(new_socket);
         return -1;
-    }
-    else {
-        log_print(INFO, "Waiting for new %s %s connection on %s socket with address %s and fd: %d\n\n", addr_type == ADDR_IPV4 ? "IPv4":"IPv6", udp_socket ? "manager":"SOCKSv5", udp_socket ? "UDP":"TCP", addr_type == ADDR_IPV4 ? string_addr:string_addr6,  new_socket);
+    } else {
+        log_print(
+            INFO,
+            "Waiting for new %s %s connection on %s socket with address %s and "
+            "fd: %d\n\n",
+            addr_type == ADDR_IPV4 ? "IPv4" : "IPv6",
+            udp_socket ? "manager" : "SOCKSv5", udp_socket ? "UDP" : "TCP",
+            addr_type == ADDR_IPV4 ? string_addr : string_addr6, new_socket);
     }
 
     return new_socket;

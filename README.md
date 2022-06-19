@@ -1,6 +1,6 @@
-# Porxy SOCKS V5
+# Prxy SOCKS V5
 
-# Estructura del proyecto
+## Estructura del proyecto
 En el directorio principal se puede encontrar el Makefile principal y el informe del proyecto.
 
 En el directorio src se encuntran los siguientes subdirectorios:
@@ -18,40 +18,45 @@ En el directorio src se encuntran los siguientes subdirectorios:
 
 En el directorio src se encuntran a su vez los archivos args.c, encargado de parsear y resolver los argumentos al ejecutar el servidor, y main.c, encargado de iniciar los sockets pasivos y demás configuraciones iniciales del servidor.
 
-# Construcción
-En el directorio principal hacer un make all para construir o un make clean para eliminar los archivos generados.
+## Construcción
+En el directorio principal usar los comandos:
 
-# Ejecución
+*make all* para construir
+
+*make clean* para eliminar los archivos generados
+
+## Ejecución
 
 Luego el ejecutable del servidor proxy se encuentra en el directorio principal bajo el nombre **socks5d**, el
 ejecutable del administrador del servidor tambien esta bajo el mismo directorio con el nombre **dog**
 
-# Opciones de ejecución del servidor proxy SOCKSv5
+## Opciones de ejecución del servidor proxy SOCKSv5
 
--h               Imprime la ayuda y termina
--l   dirección   Dirección donde servirá el proxy SOCKS
--L   dirección   Dirección donde servirá el servicio de adminsitración
--p   puerto      Puerto entrante conexiones SOCKS
--P   puerto      Puerto entrante conexiones adminsitración
--u   name:pass   Usuario y contraseña de usuario que puede usar el proxy, hasta 10
--N               Deshabilitar spoofing de contrasenias sobre POP3
--v               Imprime información sobre la versión y termina
-  
-# Comandos al utilizar el administrador de servidor
-
-list        page_number   Retorna la página indicada del listado de usuarios registrados en el servidor SOCKS
-hist                      Retorna la cantidad de conexiones historicas del servidor SOCKS
-conc                      Retorna la cantidad de conexiones concurrentes en el servidor SOCKS
-bytes                     Retorna la cantidad de bytes transferidos en el servidor SOCKS
-checksniff                Retorna el estado del sniffer de credenciales sobre POP3
-checkauth                 Retorna el estado de la autenticación en el servidor
-getpage                   Retorna la cantidad de usuarios en una página
-add         user:pass     Agrega el usuario especificado
-del         user          Borrar el usuario especificado
-sniff       on/off        Apagar o prender el sniffer de credenciales sobre POP3
-auth        on/off        Apagar o prender la autenticación en el servidor
-setpage     page_size     Establecer el tamaño de página para el listado de usuarios, donde el tamaño debe ser 
-                          entre 1 y 200
+|  Opción   |   Descripción                                |
+| ---------- | ------------------------------------------------------------------------|
+| -h       | Imprime la ayuda y termina |
+| -l   dirección       | Dirección donde servirá el proxy SOCKS               |
+| -L   dirección       | Dirección donde servirá el servicio de adminsitración             |
+| -p   puerto      | Puerto entrante conexiones SOCKS                   |
+| -P   puerto | Puerto entrante conexiones administración              |
+| -u   name:pass  | Usuario y contraseña de usuario que puede usar el proxy, hasta 10                     |
+| -N       | Deshabilitar spoofing de contrasenias sobre POP3                           |
+| -v        | Imprime información sobre la versión y termina                                                    |
 
 
- 
+## Comandos al utilizar el administrador de servidor
+
+|  Comando   |        Uso        |                               Descripción                                |
+| ---------- | ------------------- | ------------------------------------------------------------------------|
+| list       | list <page_number>  | Retorna la página indicada del listado de usuarios registrados en el servidor SOCKS |
+| hist       | hist                | Retorna la cantidad de conexiones historicas del servidor SOCKS               |
+| conc       | conc                | Retorna la cantidad de conexiones concurrentes en el servidor SOCKS             |
+| bytes      | bytes               | Retorna la cantidad de bytes transferidos en el servidor SOCKS                   |
+| checksniff | checksniff          | Retorna el estado del sniffer de credenciales sobre POP3              |
+| checkauth  | checkauth           | Retorna el estado de la autenticación en el servidor                     |
+| getpage    | getpage             | Retorna la cantidad de usuarios en una página                           |
+| add        | add user:pass       | Agrega el usuario especificado                                                    |
+| del        | del user            | Borrar el usuario especificado                                                 |
+| sniff      | sniff on/off        | Apagar o prender el sniffer de credenciales sobre POP3                |
+| auth       | auth on/off         | Apagar o prender la autenticación en el servidor                         |
+| setpage    | setpage <page_size> | Establecer el tamaño de página para el listado de usuarios (entre 1 y 200)               |
