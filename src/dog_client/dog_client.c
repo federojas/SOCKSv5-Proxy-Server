@@ -36,6 +36,10 @@ static bool alter_toggle_auth_builder(struct dog_request *, char *);
 static bool alter_user_page_size_builder(struct dog_request *, char *);
 static void header_builder(struct dog_request * dog_request, dog_type type, unsigned cmd);
 void response_handler(struct dog_request dog_request, struct dog_response dog_response, char *message);
+void print_help_table();
+void print_command(char * command);
+void print_usage(char * usage);
+void print_description(char * description);
 
 /* comandos para implementacion tipo shell */
 typedef struct dog_client_command {
@@ -60,7 +64,7 @@ dog_client_command dog_client_commands[] = {
     {.name = "del", .usage = "del user", .builder = alter_del_user_builder, .nparams = 1, .description="Command to delete a user", .on_success_message="User deleted successfully" },
     {.name = "sniff", .usage = "sniff on/off", .builder = alter_toggle_sniff_builder, .nparams = 1, .description="Command to toggle POP3 credential sniffer over the server", .on_success_message="POP3 credential sniffer toggled!" }, 
     {.name = "auth", .usage = "auth on/off", .builder = alter_toggle_auth_builder, .nparams = 1, .description="Command to toggle authentication over the server", .on_success_message="Authentication toggled!" },
-    {.name = "setpage", .usage = "setpage <page_size> (page_size between 1 and 200)", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size", .on_success_message="Page size set successfully" },
+    {.name = "setpage", .usage = "setpage <page_size>", .builder = alter_user_page_size_builder, .nparams = 1, .description="Command to set page size (between 1 and 200)", .on_success_message="Page size set successfully" },
 };
 
 static bool done = false;
@@ -220,11 +224,46 @@ int main(int argc, const char *argv[])
 }
 
 void help() {
+    print_help_table();
+}
+
+void print_help_table() {
+    printf("+------------+---------------------+--------------------------------------------------------------------------+\n");
+    printf("|  Command   |        Usage        |                               Description                                |\n");
+    printf("+------------+---------------------+--------------------------------------------------------------------------+\n");
     for(int i = 0; i < MAX_COMMANDS; i++) {
-        printf("Command: %s\t usage: %s\t description: %s\n", 
-        dog_client_commands[i].name,
-        dog_client_commands[i].usage, 
-        dog_client_commands[i].description);
+        printf("| ");
+        print_command(dog_client_commands[i].name);
+        printf(" | ");
+        print_usage(dog_client_commands[i].usage);
+        printf(" | ");
+        print_description(dog_client_commands[i].description);
+        printf(" |\n");
+    }
+    printf("+------------+---------------------+--------------------------------------------------------------------------+\n");
+}
+
+void print_command(char * command) {
+    printf("%s", BGREEN);
+    printf("%s", command);
+    printf("%s", COLOR_OFF);
+
+    for (int i = strlen(command); i < 10; i++) {
+        printf(" ");
+    }
+}
+
+void print_usage(char * usage) {
+    printf("%s", usage);
+    for (int i = strlen(usage); i < 19; i++) {
+        printf(" ");
+    }
+}
+
+void print_description(char * description) {
+    printf("%s", description);
+    for (int i = strlen(description); i < 72; i++) {
+        printf(" ");
     }
 }
 
