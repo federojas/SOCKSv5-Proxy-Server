@@ -1,4 +1,4 @@
-# Prxy SOCKS V5
+# Proxy SOCKS V5
 
 ## Estructura del proyecto
 En el directorio principal se puede encontrar el Makefile principal y el informe del proyecto.
