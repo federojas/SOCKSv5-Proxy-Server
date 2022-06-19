@@ -378,9 +378,6 @@ void socksv5_passive_accept(struct selector_key *key) {
         goto fail;
     }
 
-    // Incremento la cantidad de conexiones concurrentes
-    // y agrego una a las conexiones historicas
-    inc_current_connections();
 
     state = socks5_new(client);
 
@@ -398,6 +395,9 @@ void socksv5_passive_accept(struct selector_key *key) {
         error_message = "Socks5 Passive: selector error register";
         goto fail;
     }
+    // Incremento la cantidad de conexiones concurrentes
+    // y agrego una a las conexiones historicas
+    inc_current_connections();
 
     return;
 
