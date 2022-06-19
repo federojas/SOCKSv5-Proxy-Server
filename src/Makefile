@@ -5,7 +5,9 @@ CFLAGS= -g --std=c11 -fsanitize=address -Wall -Wextra -Werror -Wno-unused-parame
 OBJECTS= ./logger/logger.o ./utils/util.o ./utils/net_utils.o ./selector/selector.o ./stm/stm.o ./managers/socksv5/socksv5_nio.o ./managers/dog_manager/dog.o ./managers/dog_manager/dog_manager.o ./buffer/buffer.o ./parser/socksv5/hello_parser.o  ./parser/socksv5/auth_parser.o ./parser/socksv5/request_parser.o ./parser/pop3_sniffer/pop3_sniffer.o ./statistics/statistics.o ./utils/user_utils.o
 
 all: ${OBJECTS}
+	@echo "\n!!!	Making SOCKS5 proxy	!!!\n";
 	$(CC) $(CFLAGS) $(LDFLAG) -o ../socks5d main.c args.c $(OBJECTS)
+	@echo "\n!!!	Making DOG manager	!!!\n";
 	$(CC) $(CFLAGS) $(LDFLAG) -o ../dog ./dog_client/dog_client.c args.c $(OBJECTS)
 
 clean:
