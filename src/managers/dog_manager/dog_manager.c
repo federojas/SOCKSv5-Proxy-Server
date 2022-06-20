@@ -88,7 +88,7 @@ struct dog_manager {
 
 struct dog_manager dog_manager;
 
-void manager_passive_accept(struct selector_key *key) {
+void manager_receive(struct selector_key *key) {
 
     dog_manager.client_addr_len = sizeof(dog_manager.client_addr);
     dog_manager.response_len = 0;

@@ -35,7 +35,7 @@ static bool done = false;
 extern struct socks5_args socks5_args;
 extern struct socks5_stats socks5_stats;
 
-static int build_passive_socket(addr_type addr_type, bool udp_socket);
+static int build_socket(addr_type addr_type, bool udp_socket);
 
 // TODO: Clean up function
 static void sigterm_handler(const int signal) {
@@ -60,7 +60,7 @@ int main(const int argc, char **argv) {
 
     // Creando sockets pasivos IPv4 e IPv6 para el servidor proxy SOCKSv5
 
-    current_sock_fd = build_passive_socket(ADDR_IPV4, false);
+    current_sock_fd = build_socket(ADDR_IPV4, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -71,7 +71,7 @@ int main(const int argc, char **argv) {
         proxy_socks5[proxy_socks5_size++] = current_sock_fd;
     }
 
-    current_sock_fd = build_passive_socket(ADDR_IPV6, false);
+    current_sock_fd = build_socket(ADDR_IPV6, false);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -90,7 +90,7 @@ int main(const int argc, char **argv) {
     // Creando sockets pasivos IPv4 e IPv6 para el administrador del servidor
     // proxy SOCKSv5
 
-    current_sock_fd = build_passive_socket(ADDR_IPV4, true);
+    current_sock_fd = build_socket(ADDR_IPV4, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv4 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -101,7 +101,7 @@ int main(const int argc, char **argv) {
         server_manager[server_manager_size++] = current_sock_fd;
     }
 
-    current_sock_fd = build_passive_socket(ADDR_IPV6, true);
+    current_sock_fd = build_socket(ADDR_IPV6, true);
     if (current_sock_fd < 0) {
         log_print(DEBUG, "Unable to create passive IPv6 proxy");
     } else if (selector_fd_set_nio(current_sock_fd) == -1) {
@@ -113,7 +113,7 @@ int main(const int argc, char **argv) {
     }
 
     if (server_manager_size == 0) {
-        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) passive "
+        log_print(FATAL, "Unable to create neither (IPv4 | IPv6) "
                          "socket for server manager");
     }
 
@@ -156,7 +156,7 @@ int main(const int argc, char **argv) {
     }
 
     const struct fd_handler manager = {
-        .handle_read = manager_passive_accept,
+        .handle_read = manager_receive,
         .handle_write = NULL,
         .handle_close = NULL, // nada que liberar
     };
@@ -165,7 +165,7 @@ int main(const int argc, char **argv) {
         ss = selector_register(selector, server_manager[i], &manager, OP_READ,
                                NULL);
         if (ss != SELECTOR_SUCCESS) {
-            err_msg = "Error registering server manager passive fd";
+            err_msg = "Error registering server manager fd";
             goto finally;
         }
     }
@@ -210,7 +210,7 @@ finally:
     return ret;
 }
 
-static int build_passive_socket(addr_type addr_type, bool udp_socket) {
+static int build_socket(addr_type addr_type, bool udp_socket) {
 
     int new_socket;
 
@@ -229,7 +229,7 @@ static int build_passive_socket(addr_type addr_type, bool udp_socket) {
 
     new_socket = socket(network_flag, socket_type, protocol);
     if (new_socket < 0) {
-        log_print(LOG_ERROR, "Unable to create passive socket");
+        log_print(LOG_ERROR, "Unable to create socket");
         return -1;
     }
 
