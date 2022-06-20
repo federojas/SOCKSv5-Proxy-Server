@@ -36,7 +36,7 @@ Imprime la ayuda y termina.
 .IP "\fB\-l\fB \fIdirección-socks\fR"
 Establece la dirección donde servirá el proxy SOCKS.
 Se puede utilizar dos veces para enviar tanto una ipv4 como una ipv6.
-Por defecto escucha en todas las interfaces. 
+De lo contrario las direcciones no especificadas serán creadas en 0.0.0.0 y ::0.
 
 .IP "\fB\-N\fB"
 Deshabilita el credential sniffer sobre POP3.
@@ -44,7 +44,7 @@ Deshabilita el credential sniffer sobre POP3.
 .IP "\fB\-L\fB \fIdirección-de-management\fR"
 Establece la dirección donde servirá el servicio de management. 
 Se puede utilizar dos veces para enviar tanto una ipv4 como una ipv6.
-Por defecto escucha únicamente en loopback.
+De lo contrario las direcciones no especificadas serán creadas en loopback.
 
 .IP "\fB\-p\fB \fIpuerto-local\fR"
 Puerto TCP donde escuchará por conexiones entrantes SOCKS.

@@ -32,7 +32,7 @@ ejecutable del administrador del servidor tambien esta bajo el mismo directorio 
 
 ## Opciones de ejecución del servidor proxy SOCKSv5
 
-Los comandos -l y -L pueden ser utilizados 2 veces para enviar una dirección ipv4 y otra ipv6.
+Los comandos -l y -L pueden ser utilizados 2 veces para enviar una dirección ipv4 y otra ipv6. De lo contrario la direcciones no especificadas serán creadas en su valor por defecto.
 El comando -u se puede utilizar hasta 10 veces.
 
 |  Opción   |   Descripción                                |
