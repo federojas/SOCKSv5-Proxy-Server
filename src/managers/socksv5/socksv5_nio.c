@@ -637,7 +637,7 @@ static unsigned request_resolv_done(struct selector_key *key) {
     struct socks5 *s = ATTACHMENT(key);
     if (s->origin_resolution == 0) {
         log_print(INFO, "Resolution failed");
-        d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+        d->status = SOCKS5_STATUS_HOST_UNREACHABLE;
         s->log_data.response_status = d->status;
         if (-1 != request_marshall(d->wb, d->status, d->request.dest_addr_type,
                                    d->request.dest_addr,
@@ -681,75 +681,73 @@ static unsigned request_process(struct selector_key *key,
     pthread_t tid;
 
     switch (d->request.cmd) {
-    case SOCKS5_REQ_CMD_CONNECT:
-        // esto mejoraría enormemente de haber usado
-        // sockaddr_storage en el request
-        ATTACHMENT(key)->log_data.dest_addr_atyp = d->request.dest_addr_type;
-        switch (d->request.dest_addr_type) {
-        case SOCKS5_REQ_ADDRTYPE_IPV4: {
-            ATTACHMENT(key)->origin_domain = AF_INET;
-            d->request.dest_addr.ipv4.sin_port = d->request.dest_port;
-            ATTACHMENT(key)->origin_addr_len =
-                sizeof(d->request.dest_addr.ipv4);
-            memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr,
-                   sizeof(d->request.dest_addr.ipv4));
-            memcpy(&ATTACHMENT(key)->log_data.dest_addr, &d->request.dest_addr,
-                   sizeof(d->request.dest_addr.ipv4));
-            ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
-            ret = request_connect(key, d);
-            break;
-        }
-        case SOCKS5_REQ_ADDRTYPE_IPV6: {
-            ATTACHMENT(key)->origin_domain = AF_INET6;
-            d->request.dest_addr.ipv6.sin6_port = d->request.dest_port;
-            ATTACHMENT(key)->origin_addr_len =
-                sizeof(d->request.dest_addr.ipv6);
-            memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr,
-                   sizeof(d->request.dest_addr.ipv6));
-            memcpy(&ATTACHMENT(key)->log_data.dest_addr, &d->request.dest_addr,
-                   sizeof(d->request.dest_addr.ipv6));
-            ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
-            ret = request_connect(key, d);
-            break;
-        }
-        case SOCKS5_REQ_ADDRTYPE_DOMAIN: {
-            struct selector_key *k = malloc(sizeof(*key));
-            if (k == NULL) {
-                ret = REQUEST_WRITE;
-                d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
-                selector_set_interest_key(key, OP_WRITE);
-            } else {
-                memcpy(k, key, sizeof(*k));
-                if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
+        case SOCKS5_REQ_CMD_CONNECT:
+            // esto mejoraría enormemente de haber usado
+            // sockaddr_storage en el request
+            ATTACHMENT(key)->log_data.dest_addr_atyp = d->request.dest_addr_type;
+            switch (d->request.dest_addr_type) {
+            case SOCKS5_REQ_ADDRTYPE_IPV4: 
+                ATTACHMENT(key)->origin_domain = AF_INET;
+                d->request.dest_addr.ipv4.sin_port = d->request.dest_port;
+                ATTACHMENT(key)->origin_addr_len =
+                    sizeof(d->request.dest_addr.ipv4);
+                memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr,
+                    sizeof(d->request.dest_addr.ipv4));
+                memcpy(&ATTACHMENT(key)->log_data.dest_addr, &d->request.dest_addr,
+                    sizeof(d->request.dest_addr.ipv4));
+                ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
+                ret = request_connect(key, d);
+                break;
+            
+            case SOCKS5_REQ_ADDRTYPE_IPV6: 
+                ATTACHMENT(key)->origin_domain = AF_INET6;
+                d->request.dest_addr.ipv6.sin6_port = d->request.dest_port;
+                ATTACHMENT(key)->origin_addr_len =
+                    sizeof(d->request.dest_addr.ipv6);
+                memcpy(&ATTACHMENT(key)->origin_addr, &d->request.dest_addr,
+                    sizeof(d->request.dest_addr.ipv6));
+                memcpy(&ATTACHMENT(key)->log_data.dest_addr, &d->request.dest_addr,
+                    sizeof(d->request.dest_addr.ipv6));
+                ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
+                ret = request_connect(key, d);
+                break;
+            
+            case SOCKS5_REQ_ADDRTYPE_DOMAIN: 
+                struct selector_key *k = malloc(sizeof(*key));
+                if (k == NULL) {
                     ret = REQUEST_WRITE;
                     d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
                     selector_set_interest_key(key, OP_WRITE);
-                    ATTACHMENT(key)->log_data.response_status = d->status;
                 } else {
-                    ret = REQUEST_RESOLV;
-                    // hasta que no resuelva el nombre, no hay que hacer nada
-                    selector_set_interest_key(key, OP_NOOP);
-                    memcpy(ATTACHMENT(key)->log_data.dest_addr.fqdn,
-                           d->request.dest_addr.fqdn,
-                           sizeof(d->request.dest_addr.fqdn));
-                    ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
+                    memcpy(k, key, sizeof(*k));
+                    if (-1 == pthread_create(&tid, 0, request_resolv_blocking, k)) {
+                        ret = REQUEST_WRITE;
+                        d->status = SOCKS5_STATUS_GENERAL_SERVER_FAILURE;
+                        selector_set_interest_key(key, OP_WRITE);
+                        ATTACHMENT(key)->log_data.response_status = d->status;
+                    } else {
+                        ret = REQUEST_RESOLV;
+                        // hasta que no resuelva el nombre, no hay que hacer nada
+                        selector_set_interest_key(key, OP_NOOP);
+                        memcpy(ATTACHMENT(key)->log_data.dest_addr.fqdn,
+                            d->request.dest_addr.fqdn,
+                            sizeof(d->request.dest_addr.fqdn));
+                        ATTACHMENT(key)->log_data.dest_port = d->request.dest_port;
+                    }
                 }
+                break;
+            default: 
+                ret = REQUEST_WRITE;
+                d->status = SOCKS5_STATUS_ADDRTYPE_NOT_SUPPORTED;
+                selector_set_interest_key(key, OP_WRITE);
             }
             break;
-        }
-        default: {
+        case SOCKS5_REQ_CMD_BIND:
+        case SOCKS5_REQ_CMD_ASSOCIATE:
+        default:
+            d->status = SOCKS5_STATUS_CMD_NOT_SUPPORTED;
             ret = REQUEST_WRITE;
-            d->status = SOCKS5_STATUS_ADDRTYPE_NOT_SUPPORTED;
-            selector_set_interest_key(key, OP_WRITE);
-        }
-        }
-        break;
-    case SOCKS5_REQ_CMD_BIND:
-    case SOCKS5_REQ_CMD_ASSOCIATE:
-    default:
-        d->status = SOCKS5_STATUS_CMD_NOT_SUPPORTED;
-        ret = REQUEST_WRITE;
-        break;
+            break;
     }
 
     return ret;
