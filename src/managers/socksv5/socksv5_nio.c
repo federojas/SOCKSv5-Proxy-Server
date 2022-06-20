@@ -250,7 +250,7 @@ void socksv5_pool_destroy(void) {
     for (s = pool; s != NULL; s = next) {
         next = s->next;
 
-        log_print(DEBUG, "Closing connection");
+        log_print(DEBUG, "Socks5 pool destroy");
 
         close(s->origin_fd);
         close(s->client_fd);
@@ -357,6 +357,7 @@ static void socksv5_done(struct selector_key *key) {
     }
 
     dec_current_connections();
+    log_print(INFO, "Connection closed, curr conn: %d", socks5_stats.current_connections);
 }
 
 void socksv5_passive_accept(struct selector_key *key) {
@@ -398,6 +399,7 @@ void socksv5_passive_accept(struct selector_key *key) {
     // Incremento la cantidad de conexiones concurrentes
     // y agrego una a las conexiones historicas
     inc_current_connections();
+    log_print(INFO, "new connection, curr conn: %d", socks5_stats.current_connections);
 
     return;
 
