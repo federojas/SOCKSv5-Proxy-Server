@@ -203,7 +203,7 @@ int main(int argc, const char *argv[]) {
         memset(user_input, 0, USER_INPUT_SIZE);
         fgets(user_input, USER_INPUT_SIZE, stdin);
 
-        if (user_input == NULL) {
+        if (user_input[0] == 0) {
             printf("No command specified.\n");
             continue;
         }
