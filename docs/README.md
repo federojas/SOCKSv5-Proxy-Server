@@ -32,6 +32,9 @@ ejecutable del administrador del servidor tambien esta bajo el mismo directorio 
 
 ## Opciones de ejecución del servidor proxy SOCKSv5
 
+Los comandos -l y -L pueden ser utilizados 2 veces para enviar una dirección ipv4 y otra ipv6.
+El comando -u se puede utilizar hasta 10 veces.
+
 |  Opción   |   Descripción                                |
 | ---------- | ------------------------------------------------------------------------|
 | -h       | Imprime la ayuda y termina |
@@ -39,7 +42,7 @@ ejecutable del administrador del servidor tambien esta bajo el mismo directorio 
 | -L   dirección       | Dirección donde servirá el servicio de adminsitración             |
 | -p   puerto      | Puerto entrante conexiones SOCKS                   |
 | -P   puerto | Puerto entrante conexiones administración              |
-| -u   name:pass  | Usuario y contraseña de usuario que puede usar el proxy, hasta 10                     |
+| -u   name:pass  | Usuario y contraseña de usuario que puede usar el proxy                    |
 | -N       | Deshabilitar spoofing de contrasenias sobre POP3                           |
 | -v        | Imprime información sobre la versión y termina                                                    |
 

@@ -170,7 +170,7 @@ int main(const int argc, char **argv) {
         }
     }
 
-    for (; !done;) {
+    for (;!done;) {
         err_msg = NULL;
         ss = selector_select(selector);
         if (ss != SELECTOR_SUCCESS) {

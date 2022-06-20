@@ -27,6 +27,8 @@
 #include "user_utils.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
+#define MAX_CONC_CONNECTIONS 509
+
 static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
 static struct socks5 *pool = 0;
@@ -366,41 +368,41 @@ void socksv5_passive_accept(struct selector_key *key) {
     struct socks5 *state = NULL;
     char *error_message;
     selector_status ss = SELECTOR_SUCCESS;
+    int client;
 
     // Wait for a client to connect
-    const int client =
-        accept(key->fd, (struct sockaddr *)&client_addr, &client_addr_len);
-    if (client == -1) {
-        error_message = "Socks5 Passive: accept client connection failed";
-        goto fail;
+    if(socks5_stats.current_connections < MAX_CONC_CONNECTIONS) {
+        client = accept(key->fd, (struct sockaddr *)&client_addr, &client_addr_len);
+        if (client == -1) {
+            error_message = "Socks5 Passive: accept client connection failed";
+            goto fail;
+        }
+        if (selector_fd_set_nio(client) == -1) {
+            error_message = "Socks5 Passive: set non block failed";
+            goto fail;
+        }
+
+
+        state = socks5_new(client);
+
+        if (state == NULL) {
+            error_message = "Socks5 passive: new socks5 connection failed";
+            goto fail;
+        }
+
+        memcpy(&state->client_addr, &client_addr, client_addr_len);
+        state->client_addr_len = client_addr_len;
+        state->log_data.client_addr = client_addr;
+
+        ss = selector_register(key->s, client, &socks5_handler, OP_READ, state);
+        if (SELECTOR_SUCCESS != ss) {
+            error_message = "Socks5 Passive: selector error register";
+            goto fail;
+        }
+
+        inc_current_connections();
+        log_print(INFO, "new connection, curr conn: %d", socks5_stats.current_connections);
     }
-    if (selector_fd_set_nio(client) == -1) {
-        error_message = "Socks5 Passive: set non block failed";
-        goto fail;
-    }
-
-
-    state = socks5_new(client);
-
-    if (state == NULL) {
-        error_message = "Socks5 passive: new socks5 connection failed";
-        goto fail;
-    }
-
-    memcpy(&state->client_addr, &client_addr, client_addr_len);
-    state->client_addr_len = client_addr_len;
-    state->log_data.client_addr = client_addr;
-
-    ss = selector_register(key->s, client, &socks5_handler, OP_READ, state);
-    if (SELECTOR_SUCCESS != ss) {
-        error_message = "Socks5 Passive: selector error register";
-        goto fail;
-    }
-    // Incremento la cantidad de conexiones concurrentes
-    // y agrego una a las conexiones historicas
-    inc_current_connections();
-    log_print(INFO, "new connection, curr conn: %d", socks5_stats.current_connections);
-
     return;
 
 fail:

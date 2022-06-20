@@ -59,6 +59,8 @@ static void usage(const char *progname) {
         stderr,
         "Usage: %s [OPTION]...\n"
         "\n"
+        "Commands: -l and -L can be used 2 times each to send both ipv4 and ipv6 addresses.\n"
+        "Command: -u cand be used up to 10 times.\n\n"
         "   -h               Prints help info and finishes.\n"
         "   -l <SOCKS addr>  Adress (ipv4 or ipv6) where SOCKS server will "
         "serve.\n"
@@ -67,7 +69,7 @@ static void usage(const char *progname) {
         "   -p <SOCKS port>  Port for incoming connection on SOCKS server.\n"
         "   -P <mng port>    Port for incoming connection on server manager\n"
         "   -u <name>:<pass> Username and password of SOCKS server allowed "
-        "users. Max 10.\n"
+        "users.\n"
         "   -N               Turn off POP3 credential sniffing.\n"
         "   -v               Prints current version info and finishes.\n"
         "\n",
@@ -117,7 +119,7 @@ void parse_args(const int argc, char **argv, struct socks5_args *args) {
             usage(argv[0]);
             break;
         case 'l':
-            if (strchr(optarg, ':') != NULL)
+            if (strchr(optarg, ':') != NULL) 
                 args->socks_addr6 = optarg;
             else
                 args->socks_addr = optarg;
