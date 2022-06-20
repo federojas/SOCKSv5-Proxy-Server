@@ -99,7 +99,7 @@ static void print_log_data(log_data *log_data, log_type type) {
 
     switch (type) {
     case AUTH_LOG_DATA:
-        if (log_data->username != NULL) {
+        if (log_data->username != 0) {
             log_print(INFO, AUTH_FORMAT, log_data->date, log_data->username,
                       client_string_addr, dest_string_addr, dest_port,
                       log_data->response_status);
