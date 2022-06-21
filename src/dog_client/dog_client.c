@@ -402,8 +402,6 @@ static bool alter_toggle_sniff_builder(struct dog_request *dog_request,
                                        char *input) {
     header_builder(dog_request, TYPE_ALTER, ALTER_CMD_TOGGLE_SNIFFING);
     if (strcmp(input, "on") == 0 || strcmp(input, "off") == 0) {
-        // TODO: usamos memcpy ya que atoi devuelve int en lugar de uint8? por
-        // overflow?
         dog_request->current_dog_data.dog_uint8 =
             strcmp(input, "on") == 0 ? 1 : 0;
         return true;
@@ -416,8 +414,6 @@ static bool alter_toggle_auth_builder(struct dog_request *dog_request,
                                       char *input) {
     header_builder(dog_request, TYPE_ALTER, ALTER_CMD_TOGGLE_AUTH);
     if (strcmp(input, "on") == 0 || strcmp(input, "off") == 0) {
-        // TODO: usamos memcpy ya que atoi devuelve int en lugar de uint8? por
-        // overflow?
         dog_request->current_dog_data.dog_uint8 =
             strcmp(input, "on") == 0 ? 1 : 0;
         return true;

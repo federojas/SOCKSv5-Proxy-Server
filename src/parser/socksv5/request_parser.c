@@ -7,7 +7,6 @@
 #include <errno.h>
 #include <string.h>
 
-// TODO: mejorar estilo del codigo USAR TABLA DE FUNCIONES, TODOS LOS PARSERS
 static void remaining_set(request_parser *p, const int remainingBytes) {
     p->readBytes = 0;
     p->totalBytes = remainingBytes;
@@ -31,7 +30,6 @@ static request_state version(request_parser *p, const uint8_t c) {
 }
 
 static request_state cmd(request_parser *p, const uint8_t c) {
-    // TODO: COMANDO INVALIDO: CATCHEAR AL PROCESAR, NO AFECTA EL PARSING
     p->request->cmd = c;
     return REQUEST_RSV;
 }
@@ -44,7 +42,6 @@ static request_state cmd(request_parser *p, const uint8_t c) {
 static request_state atyp(request_parser *p, const uint8_t c) {
     request_state next_state;
 
-    // TODO: ADDRTYPE INVALIDO
     p->request->dest_addr_type = c;
     switch (c) {
     case SOCKS5_REQ_ADDRTYPE_IPV4:
@@ -208,8 +205,6 @@ bool request_parser_is_done(enum request_state state, bool *errored) {
         break;
     }
 }
-
-// TODO: Mejorar los errores (EERNO.H clase 31/5 2:52:35)
 
 char *request_parser_error_report(request_state state) {
     switch (state) {

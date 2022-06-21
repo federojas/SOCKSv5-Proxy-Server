@@ -37,7 +37,6 @@ extern struct socks5_stats socks5_stats;
 
 static int build_socket(addr_type addr_type, bool udp_socket);
 
-// TODO: Clean up function
 static void sigterm_handler(const int signal) {
     printf("signal %d, cleaning up and exiting\n", signal);
     done = true;

@@ -9,8 +9,8 @@ bool error_flag = false;
 #define DATE_FORMAT "%FT%TZ"
 #define AUTH_FORMAT "%s\t%s\tA\t%s\t%s:%u\tstatus=%d\n"
 #define NO_AUTH_FORMAT "%s\tA\t%s\t%s:%u\tstatus=%d\n"
-#define POP3_SNIFF_FORMAT                                                      \
-    "%s\t%s\tP\tPOP3\t%s:%u\tsniffed credentials: %s:%s\tstatus=%d\n"
+#define POP3_SNIFF_FORMAT  "%s\t%s\tP\tPOP3\t%s:%u\tsniffed credentials: %s:%s\tstatus=%d\n"
+#define POP3_SNIFF_NO_AUTH_FORMAT  "%s\tP\tPOP3\t%s:%u\tsniffed credentials: %s:%s\tstatus=%d\n"
 
 static void print_log_data(log_data *log_data, log_type type);
 static void get_current_date_time(char *date);
@@ -111,10 +111,17 @@ static void print_log_data(log_data *log_data, log_type type) {
         break;
 
     case POP3_LOG_DATA:
-        log_print(
+        if(log_data->username[0] != 0) {
+            log_print(
             INFO, POP3_SNIFF_FORMAT, log_data->date, log_data->username,
             dest_string_addr, dest_port, log_data->sniffed_user_info.username,
             log_data->sniffed_user_info.password, log_data->response_status);
+        } else {
+            log_print(
+            INFO, POP3_SNIFF_NO_AUTH_FORMAT, log_data->date,
+            dest_string_addr, dest_port, log_data->sniffed_user_info.username,
+            log_data->sniffed_user_info.password, log_data->response_status);
+        }
         break;
 
     default:
