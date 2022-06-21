@@ -367,7 +367,7 @@ static void socksv5_done(struct selector_key *key) {
     }
 
     dec_current_connections();
-    log_print(INFO, "Connection closed, curr conn: %d", socks5_stats.current_connections);
+    log_print(DEBUG, "Connection closed, curr conn: %d", socks5_stats.current_connections);
 }
 
 void socksv5_passive_accept(struct selector_key *key) {
@@ -406,6 +406,8 @@ void socksv5_passive_accept(struct selector_key *key) {
         }
 
         inc_current_connections();
+        log_print(DEBUG, "New nonnection, curr conn: %d", socks5_stats.current_connections);
+
     }
     
     return;
